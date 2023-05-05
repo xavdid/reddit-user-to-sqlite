@@ -1,4 +1,4 @@
-from typing import TypedDict, final, reveal_type
+from typing import TypedDict, final
 
 import requests
 from tqdm import tqdm
@@ -76,29 +76,36 @@ class ErorrResponse(TypedDict):
     error: int
 
 
-def load_reddit_data(username: str):
+# limit is 100
+PAGE_SIZE = 100
+
+
+def load_comments_for_user(username: str) -> list[Comment]:
     comments: list[Comment] = []
     after = None
-
+    print("startig")
     # max number of pages we can fetch
-    # TODO: we can also do different sorts to include more from each category?
-    # i'll do that if my archive doesn't pan out
     for _ in tqdm(range(10)):
+        print("getting")
         response: CommentsResponse | ErorrResponse = requests.get(
             f"https://www.reddit.com/user/{username}/comments.json",
-            {"limit": 100, "raw_json": 1, "after": after},
+            {"limit": PAGE_SIZE, "raw_json": 1, "after": after},
             headers={"user-agent": "reddit-to-sqlite"},
         ).json()
 
+        print("got")
         if "error" in response:
+            print("err")
             raise ValueError(
                 f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
             )
 
-        if not response["data"]["children"]:
+        if len(response["data"]["children"]) < PAGE_SIZE:
+            print("done?")
             break
 
         comments += [c["data"] for c in response["data"]["children"]]
         after = response["data"]["after"]
+        print("end of loop")
 
     return comments
