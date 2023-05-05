@@ -1,6 +1,7 @@
 import click
 from sqlite_utils import Database
 
+from reddit_to_sqlite.helpers import clean_username
 from reddit_to_sqlite.reddit_api import load_comments_for_user
 from reddit_to_sqlite.sqlite_helpers import (
     CommentRow,
@@ -17,13 +18,6 @@ from reddit_to_sqlite.sqlite_helpers import (
 @click.version_option()
 def cli():
     "Save data from Reddit to a SQLite database"
-
-
-def clean_username(username: str) -> str:
-    """
-    strips the leading `/u/` off the front of a username, if present
-    """
-    return username
 
 
 @cli.command()

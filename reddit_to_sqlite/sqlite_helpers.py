@@ -14,12 +14,12 @@ class BaseRow:
 class SubredditRow(BaseRow):
     id: str
     name: str
-    type: Optional[str] = None
+    type: str
 
 
 def insert_subreddits(db: Database, subreddits: list[SubredditRow]):
     db["subreddits"].insert_all(  # type: ignore
-        [s.as_row() for s in subreddits],
+        map(asdict, subreddits),
         ignore=True,  # type: ignore
         # only relevant if creating the table
         pk="id",  # type: ignore
@@ -35,7 +35,8 @@ class UserRow(BaseRow):
 
 def insert_user(db: Database, user: UserRow):
     db["users"].insert(  # type: ignore
-        user.as_row(),
+        asdict(user),
+        # ignore any write error
         ignore=True,
         # only relevant if creating the table
         pk="id",  # type: ignore
@@ -43,30 +44,17 @@ def insert_user(db: Database, user: UserRow):
     )
 
 
-# d = {
-#     "id": str,  # csv doesn't have type prepended; should change
-#     "timestamp": int,  # have to transform for CSV
-#     "score": int,  # nullable
-#     "text": str,  # make sure to match style (looks like csv is markdown? does JSON have that at all?)
-#     "user": str,  # always me; need to fetch separately in csv
-#     "is_submitter": int,  # nullable
-#     "subreddit": str,  # json has fk, csv has string
-#     "permalink": str,
-#     "controversiality": int,  # nullable
-# }
-
-
 @dataclass
 class CommentRow(BaseRow):
     id: str
     timestamp: int
+    score: int
     text: str
     user: str
+    is_submitter: int
     subreddit: str
     permalink: str
-    score: Optional[int] = None
-    is_submitter: Optional[int] = None
-    controversiality: Optional[int] = None
+    controversiality: int
 
 
 def upsert_comments(db: Database, comments: list[CommentRow]):
@@ -87,17 +75,6 @@ def upsert_comments(db: Database, comments: list[CommentRow]):
                 "users",
                 "id",
             ),
-        ],
-        column_order=[  # type: ignore
-            "id",
-            "timestamp",
-            "score",
-            "text",
-            "user",
-            "is_submitter",
-            "subreddit",
-            "permalink",
-            "controversiality",
         ],
         # can re-add or assert this later, but the rows aren't created if this is present
         # see: https://github.com/simonw/sqlite-utils/issues/538

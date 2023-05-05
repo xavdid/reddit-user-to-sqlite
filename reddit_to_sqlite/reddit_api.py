@@ -83,29 +83,23 @@ PAGE_SIZE = 100
 def load_comments_for_user(username: str) -> list[Comment]:
     comments: list[Comment] = []
     after = None
-    print("startig")
     # max number of pages we can fetch
     for _ in tqdm(range(10)):
-        print("getting")
         response: CommentsResponse | ErorrResponse = requests.get(
             f"https://www.reddit.com/user/{username}/comments.json",
             {"limit": PAGE_SIZE, "raw_json": 1, "after": after},
             headers={"user-agent": "reddit-to-sqlite"},
         ).json()
 
-        print("got")
         if "error" in response:
-            print("err")
             raise ValueError(
                 f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
             )
 
         if len(response["data"]["children"]) < PAGE_SIZE:
-            print("done?")
             break
 
         comments += [c["data"] for c in response["data"]["children"]]
         after = response["data"]["after"]
-        print("end of loop")
 
     return comments

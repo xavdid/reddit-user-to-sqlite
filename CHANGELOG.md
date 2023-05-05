@@ -2,4 +2,4 @@
 
 _released `TBD`_
 
-- Initial public release
+- Initial public release!
