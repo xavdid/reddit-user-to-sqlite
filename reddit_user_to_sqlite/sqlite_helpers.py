@@ -13,7 +13,7 @@ class SubredditRow(TypedDict):
 
 def comment_to_subreddit_row(comment: SubredditFragment) -> SubredditRow:
     return {
-        "id": comment["subreddit_id"],
+        "id": comment["subreddit_id"][3:],
         "name": comment["subreddit"],
         "type": comment["subreddit_type"],
     }
@@ -35,7 +35,7 @@ class UserRow(TypedDict):
 
 
 def comment_to_user_row(comment: UserFragment) -> UserRow:
-    return {"id": comment["author_fullname"], "username": comment["author"]}
+    return {"id": comment["author_fullname"][3:], "username": comment["author"]}
 
 
 def insert_user(db: Database, user: UserFragment):
@@ -67,8 +67,8 @@ def comment_to_comment_row(comment: Comment) -> CommentRow:
         "timestamp": int(comment["created"]),
         "score": comment["score"],
         "text": comment["body"],
-        "user": comment["author_fullname"],
-        "subreddit": comment["subreddit_id"],
+        "user": comment["author_fullname"][3:],  # strip leading t2_
+        "subreddit": comment["subreddit_id"][3:],  # strip leading t5_
         "permalink": f'https://www.reddit.com{comment["permalink"]}?context=10',
         "is_submitter": int(comment["is_submitter"]),
         "controversiality": comment["controversiality"],

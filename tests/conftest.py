@@ -121,10 +121,10 @@ def stored_comment() -> CommentRow:
         "is_submitter": 0,
         "permalink": "https://www.reddit.com/r/patientgamers/comments/1371yrv/what_games_do_you_guys_love_to_replay_or_never/jj0ti6f/?context=10",
         "score": 1,
-        "subreddit": "t5_2t3ad",
+        "subreddit": "2t3ad",
         "text": "Such a great game to pick up for a run every couple of months. Every time I think I'm done, it pulls be back in.",
         "timestamp": 1683327131,
-        "user": "t2_np8mb41h",
+        "user": "np8mb41h",
     }
 
 

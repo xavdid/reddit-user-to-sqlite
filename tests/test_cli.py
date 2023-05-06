@@ -24,9 +24,9 @@ def test_load_data_for_user(
     )
 
     assert list(tmp_db["subreddits"].rows) == [
-        {"id": "t5_2t3ad", "name": "patientgamers", "type": "public"}
+        {"id": "2t3ad", "name": "patientgamers", "type": "public"}
     ]
-    assert list(tmp_db["users"].rows) == [{"id": "t2_np8mb41h", "username": "xavdid"}]
+    assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
     assert list(tmp_db["comments"].rows) == [stored_comment]
 
     assert response.call_count == 1
@@ -41,10 +41,10 @@ def test_load_live_data(tmp_db_path: str, tmp_db: Database, stored_comment):
         tmp_db.table_names()
     )
 
-    assert {"id": "t5_2t3ad", "name": "patientgamers", "type": "public"} in list(
+    assert {"id": "2t3ad", "name": "patientgamers", "type": "public"} in list(
         tmp_db["subreddits"].rows
     )
-    assert list(tmp_db["users"].rows) == [{"id": "t2_np8mb41h", "username": "xavdid"}]
+    assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
 
     comments = list(tmp_db["comments"].rows)
     assert (
