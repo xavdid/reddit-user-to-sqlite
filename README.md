@@ -34,6 +34,61 @@ reddit-user-to-sqlite user your_username --db my-reddit-data.db
 
 While most [Dogsheep](https://github.com/dogsheep) projects grab the raw JSON output of their source APIs, Reddit's API has a lot of junk in it. So, I opted for a slimmed down approach.
 
+## Viewing Data
+
+The resulting SQLite database pairs well with [Datasette](https://datasette.io/), a tool for viewing SQLite in the web. Below is my recommended configuration.
+
+First, install `datasette`:
+
+```bash
+pipx install datasette
+```
+
+Then, add the recommended plugins (for rendering timestamps and markdown):
+
+```bash
+pipx inject datasette datasette-render-markdown datasette-render-timestamps
+```
+
+Finally, create a `metadata.json` file with the following:
+
+```json
+{
+  "databases": {
+    "reddit": {
+      "tables": {
+        "comments": {
+          "sort_desc": "timestamp",
+          "plugins": {
+            "datasette-render-markdown": {
+              "columns": ["text"]
+            },
+            "datasette-render-timestamps": {
+              "columns": ["timestamp"]
+            }
+          }
+        },
+        "subreddits": {
+          "sort": "name"
+        }
+      }
+    }
+  }
+}
+```
+
+Now when you run
+
+```bash
+datasette reddit.db --metadata metadata.json
+```
+
+You'll get a nice, formatted output:
+
+![](https://cdn.zappy.app/93b1760ab541a8b68c2ee2899be5e079.png)
+
+![](https://cdn.zappy.app/5850a782196d1c7a83a054400c0a5dc4.png)
+
 ## Development
 
 This section is people making changes to this package.
