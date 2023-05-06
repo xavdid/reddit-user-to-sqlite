@@ -29,7 +29,12 @@ setup(
         [console_scripts]
         {NAME}={UNDERSCORE_NAME}.cli:cli
     """,
-    install_requires=["sqlite-utils", "click", "requests", "tqdm"],
-    extras_require={"test": ["pytest", "requests-mock"]},
+    install_requires=[
+        "sqlite-utils==3.30",
+        "click==8.1.3",
+        "requests==2.29.0",
+        "tqdm==4.65.0",
+    ],
+    extras_require={"test": ["pytest==7.3.1", "responses==0.23.1"]},
     tests_require=[f"{NAME}[test]"],
 )
