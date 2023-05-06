@@ -1,16 +1,12 @@
-from typing import Any, Callable, Generator, Optional, Protocol
-from unittest.mock import patch
+from typing import Any, Generator, Optional, Protocol
 
 import pytest
 import responses
-from responses import BaseResponse, RequestsMock, matchers
+from responses import BaseResponse, matchers
 from sqlite_utils import Database
 
-from reddit_user_to_sqlite.reddit_api import (
-    USER_AGENT,
-    CommentsResponse,
-    load_comments_for_user,
-)
+from reddit_user_to_sqlite.reddit_api import USER_AGENT, CommentsResponse
+from reddit_user_to_sqlite.sqlite_helpers import CommentRow
 
 
 @pytest.fixture
@@ -118,6 +114,21 @@ def comment():
 
 
 @pytest.fixture
+def stored_comment() -> CommentRow:
+    return {
+        "controversiality": 0,
+        "id": "jj0ti6f",
+        "is_submitter": 0,
+        "permalink": "https://www.reddit.com/r/patientgamers/comments/1371yrv/what_games_do_you_guys_love_to_replay_or_never/jj0ti6f/?context=10",
+        "score": 1,
+        "subreddit": "t5_2t3ad",
+        "text": "Such a great game to pick up for a run every couple of months. Every time I think I'm done, it pulls be back in.",
+        "timestamp": 1683327131,
+        "user": "t2_np8mb41h",
+    }
+
+
+@pytest.fixture
 def comment_response(comment) -> CommentsResponse:
     return {
         "kind": "Listing",
@@ -169,3 +180,27 @@ def mock_request() -> Generator[MockFunc, None, None]:
             )
 
         yield _mock_request
+
+
+# https://docs.pytest.org/en/latest/example/simple.html#control-skipping-of-tests-according-to-command-line-option
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--include-live", action="store_true", default=False, help="run live API tests"
+    )
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "live: mark test as hitting the live API")
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--include-live"):
+        # include-live flag given in cli; do not skip slow tests
+        return
+
+    skip_live = pytest.mark.skip(reason="need --include-live flag to run")
+    for item in items:
+        if "live" in item.keywords:
+            item.add_marker(skip_live)

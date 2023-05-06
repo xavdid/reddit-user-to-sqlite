@@ -4,10 +4,8 @@ import pytest
 from sqlite_utils import Database
 from sqlite_utils.db import ForeignKey
 
+from reddit_user_to_sqlite.reddit_api import SubredditFragment, UserFragment
 from reddit_user_to_sqlite.sqlite_helpers import (
-    CommentRow,
-    SubredditRow,
-    UserRow,
     insert_subreddits,
     insert_user,
     upsert_comments,
@@ -16,16 +14,17 @@ from reddit_user_to_sqlite.sqlite_helpers import (
 
 @pytest.fixture
 def make_sr():
-    def make_subreddit(name: str, id_=None, type_="public"):
-        return SubredditRow(id=id_ or name, name=name, type=type_)
+    def make_subreddit(name: str, id_=None, type_="public") -> SubredditFragment:
+        # returns the relevant sub-portions of
+        return {"subreddit": name, "subreddit_id": id_ or name, "subreddit_type": type_}
 
     return make_subreddit
 
 
 @pytest.fixture
 def make_user():
-    def _make_user(name: str, id_: Optional[str] = None):
-        return UserRow(id=id_ or name[::-1], username=name)
+    def _make_user(name: str, id_: Optional[str] = None) -> UserFragment:
+        return {"author_fullname": id_ or name[::-1], "author": name}
 
     return _make_user
 
@@ -82,34 +81,19 @@ def test_insert_users(tmp_db: Database, make_user):
     ]
 
 
-def test_upsert_comments(tmp_db: Database, make_sr, make_user):
-    sr: SubredditRow = make_sr("Games")
-    insert_subreddits(tmp_db, [sr])
+def test_upsert_comments(tmp_db: Database, comment, stored_comment):
+    insert_subreddits(tmp_db, [comment])
+    insert_user(tmp_db, comment)
 
-    user: UserRow = make_user("xavdid")
-    insert_user(tmp_db, user)
-
-    comment = {
-        "id": "abc",
-        "timestamp": 12345,
-        "score": 5,
-        "text": "cool",
-        "user": user.id,
-        "is_submitter": 0,
-        "subreddit": sr.id,
-        "permalink": "https://reddit.com/r/whatever/asdf",
-        "controversiality": 0,
-    }
-
-    upsert_comments(tmp_db, [CommentRow(**comment)])
+    upsert_comments(tmp_db, [comment])
 
     assert "subreddits" in tmp_db.table_names()
     assert "users" in tmp_db.table_names()
     assert "comments" in tmp_db.table_names()
 
-    assert list(tmp_db["comments"].rows) == [comment]
+    assert list(tmp_db["comments"].rows) == [stored_comment]
 
-    assert tmp_db["comments"].foreign_keys == [
+    assert tmp_db["comments"].foreign_keys == [  # type: ignore
         ForeignKey("comments", "subreddit", "subreddits", "id"),
         ForeignKey("comments", "user", "users", "id"),
     ]

@@ -36,45 +36,12 @@ def user(db_path, username):
     db = Database(db_path)
 
     if not comments:
-        # TODO: error? print message?
-        return
+        raise click.ClickException(f"no data found for username {username}")
 
-    insert_user(
-        db,
-        UserRow(
-            id=comments[0]["author_fullname"],
-            username=comments[0]["author"],
-        ),
-    )
+    insert_user(db, comments[0])
 
-    insert_subreddits(
-        db,
-        [
-            SubredditRow(
-                id=comment["subreddit_id"],
-                name=comment["subreddit"],
-                type=comment["subreddit_type"],
-            )
-            for comment in comments
-        ],
-    )
+    insert_subreddits(db, comments)
 
-    upsert_comments(
-        db,
-        [
-            CommentRow(
-                id=comment["id"],
-                timestamp=int(comment["created"]),
-                score=comment["score"],
-                text=comment["body_html"],
-                user=comment["author_fullname"],
-                subreddit=comment["subreddit_id"],
-                permalink=f'https://www.reddit.com{comment["permalink"]}?context=10',
-                is_submitter=int(comment["is_submitter"]),
-                controversiality=comment["controversiality"],
-            )
-            for comment in comments
-        ],
-    )
+    upsert_comments(db, comments)
 
     ensure_fts(db)

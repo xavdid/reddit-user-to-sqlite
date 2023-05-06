@@ -6,9 +6,25 @@ from tqdm import tqdm
 USER_AGENT = "reddit-to-sqlite"
 
 
-@final
-class Comment(TypedDict):
-    # this is only the relevant fields
+class SubredditFragment(TypedDict):
+    ## SUBREDDIT
+    # "consoledeals"
+    subreddit: str
+    # ID
+    subreddit_id: str
+    # "public"
+    subreddit_type: str
+
+
+class UserFragment(TypedDict):
+    # comment author username
+    author: str
+    # comment author prefixed id
+    author_fullname: str
+
+
+class Comment(SubredditFragment, UserFragment):
+    # this is only the relevant fields from the response
 
     ## COMMENT
     # short ID
@@ -18,13 +34,11 @@ class Comment(TypedDict):
 
     total_awards_received: int
     gilded: int
-    # comment author
-    author: str
+
     # the ID of a post or comment
     parent_id: str
     score: int
-    # id of author
-    author_fullname: str
+
     # maybe always 0? or i'm just boring
     controversiality: int
     # plaintext (or markdown?)
@@ -46,14 +60,6 @@ class Comment(TypedDict):
     link_permalink: str
     # "r/consoledeals",
     subreddit_name_prefixed: str
-
-    ## SUBREDDIT
-    # "consoledeals"
-    subreddit: str
-    # ID
-    subreddit_id: str
-    # "public"
-    subreddit_type: str
 
 
 @final
