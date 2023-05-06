@@ -22,7 +22,8 @@ def cli():
 
 @cli.command()
 @click.argument("username")
-@click.argument(
+@click.option(
+    "--db",
     "db_path",
     type=click.Path(file_okay=True, dir_okay=False, allow_dash=False),
     default="reddit.db",
@@ -31,14 +32,13 @@ def user(db_path, username):
     username = clean_username(username)
     click.echo(f"loading data about /u/{username} into {db_path}")
 
-    db = Database(db_path)
     comments = load_comments_for_user(username)
+    db = Database(db_path)
 
     if not comments:
         # TODO: error? print message?
         return
 
-    # create author record
     insert_user(
         db,
         UserRow(

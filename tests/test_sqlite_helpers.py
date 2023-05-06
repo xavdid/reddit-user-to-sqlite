@@ -1,7 +1,6 @@
 from typing import Optional
 
 import pytest
-from click.testing import CliRunner
 from sqlite_utils import Database
 from sqlite_utils.db import ForeignKey
 
@@ -13,22 +12,6 @@ from reddit_to_sqlite.sqlite_helpers import (
     insert_user,
     upsert_comments,
 )
-
-
-@pytest.fixture
-def tmp_db_path(tmp_path):
-    """
-    returns a Database in a temp dir
-    """
-    return str(tmp_path / "test.db")
-
-
-@pytest.fixture
-def tmp_db(tmp_db_path):
-    """
-    returns a Database in a temp dir
-    """
-    return Database(tmp_db_path)
 
 
 @pytest.fixture
@@ -47,84 +30,86 @@ def make_user():
     return _make_user
 
 
-class TestDbInsertions:
-    def test_insert_subreddits(self, tmp_db: Database, make_sr):
-        insert_subreddits(
-            tmp_db,
-            [
-                make_sr("Games"),
-                make_sr("JRPG", type_="private"),
-            ],
-        )
+def test_insert_subreddits(tmp_db: Database, make_sr):
+    insert_subreddits(
+        tmp_db,
+        [
+            make_sr("Games"),
+            make_sr("JRPG", type_="private"),
+        ],
+    )
 
-        assert "subreddits" in tmp_db.table_names()
-        assert list(tmp_db["subreddits"].rows) == [
-            {"id": "Games", "name": "Games", "type": "public"},
-            {"id": "JRPG", "name": "JRPG", "type": "private"},
-        ]
+    assert "subreddits" in tmp_db.table_names()
+    assert list(tmp_db["subreddits"].rows) == [
+        {"id": "Games", "name": "Games", "type": "public"},
+        {"id": "JRPG", "name": "JRPG", "type": "private"},
+    ]
 
-    def test_repeat_subs_ignored(self, tmp_db: Database, make_sr):
-        insert_subreddits(
-            tmp_db,
-            [
-                make_sr("Games"),
-                make_sr("JRPG", type_="private"),
-            ],
-        )
 
-        # updates are ignored
-        insert_subreddits(
-            tmp_db,
-            [
-                make_sr("ames", id_="Games"),
-                make_sr("RPG", id_="JRPG"),
-                make_sr("Apple"),
-            ],
-        )
+def test_repeat_subs_ignored(tmp_db: Database, make_sr):
+    insert_subreddits(
+        tmp_db,
+        [
+            make_sr("Games"),
+            make_sr("JRPG", type_="private"),
+        ],
+    )
 
-        assert "subreddits" in tmp_db.table_names()
-        assert list(tmp_db["subreddits"].rows) == [
-            {"id": "Games", "name": "Games", "type": "public"},
-            {"id": "JRPG", "name": "JRPG", "type": "private"},
-            {"id": "Apple", "name": "Apple", "type": "public"},
-        ]
+    # updates are ignored
+    insert_subreddits(
+        tmp_db,
+        [
+            make_sr("ames", id_="Games"),
+            make_sr("RPG", id_="JRPG"),
+            make_sr("Apple"),
+        ],
+    )
 
-    def test_insert_users(self, tmp_db: Database, make_user):
-        insert_user(tmp_db, make_user("xavdid"))
+    assert "subreddits" in tmp_db.table_names()
+    assert list(tmp_db["subreddits"].rows) == [
+        {"id": "Games", "name": "Games", "type": "public"},
+        {"id": "JRPG", "name": "JRPG", "type": "private"},
+        {"id": "Apple", "name": "Apple", "type": "public"},
+    ]
 
-        assert "users" in tmp_db.table_names()
-        assert list(tmp_db["users"].rows) == [
-            {"id": "didvax", "username": "xavdid"},
-        ]
 
-    def test_upsert_comments(self, tmp_db: Database, make_sr, make_user):
-        sr: SubredditRow = make_sr("Games")
-        insert_subreddits(tmp_db, [sr])
+def test_insert_users(tmp_db: Database, make_user):
+    insert_user(tmp_db, make_user("xavdid"))
 
-        user: UserRow = make_user("xavdid")
-        insert_user(tmp_db, user)
+    assert "users" in tmp_db.table_names()
+    assert list(tmp_db["users"].rows) == [
+        {"id": "didvax", "username": "xavdid"},
+    ]
 
-        comment = {
-            "id": "abc",
-            "timestamp": 12345,
-            "score": 5,
-            "text": "cool",
-            "user": user.id,
-            "is_submitter": 0,
-            "subreddit": sr.id,
-            "permalink": "https://reddit.com/r/whatever/asdf",
-            "controversiality": 0,
-        }
 
-        upsert_comments(tmp_db, [CommentRow(**comment)])
+def test_upsert_comments(tmp_db: Database, make_sr, make_user):
+    sr: SubredditRow = make_sr("Games")
+    insert_subreddits(tmp_db, [sr])
 
-        assert "subreddits" in tmp_db.table_names()
-        assert "users" in tmp_db.table_names()
-        assert "comments" in tmp_db.table_names()
+    user: UserRow = make_user("xavdid")
+    insert_user(tmp_db, user)
 
-        assert list(tmp_db["comments"].rows) == [comment]
+    comment = {
+        "id": "abc",
+        "timestamp": 12345,
+        "score": 5,
+        "text": "cool",
+        "user": user.id,
+        "is_submitter": 0,
+        "subreddit": sr.id,
+        "permalink": "https://reddit.com/r/whatever/asdf",
+        "controversiality": 0,
+    }
 
-        assert tmp_db["comments"].foreign_keys == [
-            ForeignKey("comments", "subreddit", "subreddits", "id"),
-            ForeignKey("comments", "user", "users", "id"),
-        ]
+    upsert_comments(tmp_db, [CommentRow(**comment)])
+
+    assert "subreddits" in tmp_db.table_names()
+    assert "users" in tmp_db.table_names()
+    assert "comments" in tmp_db.table_names()
+
+    assert list(tmp_db["comments"].rows) == [comment]
+
+    assert tmp_db["comments"].foreign_keys == [
+        ForeignKey("comments", "subreddit", "subreddits", "id"),
+        ForeignKey("comments", "user", "users", "id"),
+    ]

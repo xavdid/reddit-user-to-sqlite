@@ -1,11 +1,15 @@
-from typing import TypedDict, final
+from typing import Literal, Optional, TypedDict, final
 
 import requests
 from tqdm import tqdm
 
+USER_AGENT = "reddit-to-sqlite"
+
 
 @final
 class Comment(TypedDict):
+    # this is only the relevant fields
+
     ## COMMENT
     # short ID
     id: str
@@ -60,7 +64,10 @@ class CommentWrapper(TypedDict):
 
 @final
 class CommentBody(TypedDict):
-    after: str
+    before: Optional[str]
+    after: Optional[str]
+    modhash: str
+    geo_filter: str
     dist: int
     children: list[CommentWrapper]
 
@@ -68,6 +75,7 @@ class CommentBody(TypedDict):
 @final
 class CommentsResponse(TypedDict):
     data: CommentBody
+    kind: Literal["Listing"]
 
 
 @final
@@ -76,7 +84,7 @@ class ErorrResponse(TypedDict):
     error: int
 
 
-# limit is 100
+# max page size is 100
 PAGE_SIZE = 100
 
 
@@ -88,7 +96,7 @@ def load_comments_for_user(username: str) -> list[Comment]:
         response: CommentsResponse | ErorrResponse = requests.get(
             f"https://www.reddit.com/user/{username}/comments.json",
             {"limit": PAGE_SIZE, "raw_json": 1, "after": after},
-            headers={"user-agent": "reddit-to-sqlite"},
+            headers={"user-agent": USER_AGENT},
         ).json()
 
         if "error" in response:
@@ -96,10 +104,10 @@ def load_comments_for_user(username: str) -> list[Comment]:
                 f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
             )
 
-        if len(response["data"]["children"]) < PAGE_SIZE:
-            break
-
         comments += [c["data"] for c in response["data"]["children"]]
         after = response["data"]["after"]
+
+        if len(response["data"]["children"]) < PAGE_SIZE:
+            break
 
     return comments
