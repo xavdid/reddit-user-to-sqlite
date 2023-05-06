@@ -1,9 +1,9 @@
 import click
 from sqlite_utils import Database
 
-from reddit_to_sqlite.helpers import clean_username
-from reddit_to_sqlite.reddit_api import load_comments_for_user
-from reddit_to_sqlite.sqlite_helpers import (
+from reddit_user_to_sqlite.helpers import clean_username
+from reddit_user_to_sqlite.reddit_api import load_comments_for_user
+from reddit_user_to_sqlite.sqlite_helpers import (
     CommentRow,
     SubredditRow,
     UserRow,

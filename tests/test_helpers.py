@@ -1,6 +1,6 @@
 import pytest
 
-from reddit_to_sqlite.helpers import clean_username
+from reddit_user_to_sqlite.helpers import clean_username
 
 
 @pytest.mark.parametrize(

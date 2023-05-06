@@ -1,7 +1,7 @@
 from click.testing import CliRunner
 from sqlite_utils import Database
 
-from reddit_to_sqlite.cli import cli
+from reddit_user_to_sqlite.cli import cli
 from tests.conftest import MockFunc
 
 

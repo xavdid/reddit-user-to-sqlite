@@ -6,7 +6,7 @@ import responses
 from responses import BaseResponse, RequestsMock, matchers
 from sqlite_utils import Database
 
-from reddit_to_sqlite.reddit_api import (
+from reddit_user_to_sqlite.reddit_api import (
     USER_AGENT,
     CommentsResponse,
     load_comments_for_user,

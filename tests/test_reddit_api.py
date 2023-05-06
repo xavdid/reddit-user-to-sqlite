@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from reddit_to_sqlite.reddit_api import CommentsResponse, load_comments_for_user
+from reddit_user_to_sqlite.reddit_api import CommentsResponse, load_comments_for_user
 from tests.conftest import MockFunc
 
 
@@ -14,7 +14,7 @@ def test_load_comments(mock_request: MockFunc, comment_response, comment):
     assert response.call_count == 1
 
 
-@patch("reddit_to_sqlite.reddit_api.PAGE_SIZE", new=1)
+@patch("reddit_user_to_sqlite.reddit_api.PAGE_SIZE", new=1)
 def test_loads_10_pages(mock_request: MockFunc, comment_response, comment):
     response = mock_request(params={"limit": 1}, json=comment_response)
 
@@ -23,7 +23,7 @@ def test_loads_10_pages(mock_request: MockFunc, comment_response, comment):
     assert response.call_count == 10
 
 
-@patch("reddit_to_sqlite.reddit_api.PAGE_SIZE", new=1)
+@patch("reddit_user_to_sqlite.reddit_api.PAGE_SIZE", new=1)
 def test_loads_multiple_pages(
     mock_request: MockFunc, comment_response: CommentsResponse, comment
 ):

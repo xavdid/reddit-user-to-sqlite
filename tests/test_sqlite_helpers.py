@@ -4,7 +4,7 @@ import pytest
 from sqlite_utils import Database
 from sqlite_utils.db import ForeignKey
 
-from reddit_to_sqlite.sqlite_helpers import (
+from reddit_user_to_sqlite.sqlite_helpers import (
     CommentRow,
     SubredditRow,
     UserRow,
