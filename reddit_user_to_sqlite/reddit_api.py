@@ -1,4 +1,4 @@
-from typing import Literal, Optional, TypedDict, final
+from typing import Literal, Optional, Sequence, TypedDict, final
 
 import requests
 from tqdm import tqdm
@@ -62,25 +62,49 @@ class Comment(SubredditFragment, UserFragment):
     subreddit_name_prefixed: str
 
 
+class Post(SubredditFragment, UserFragment):
+    # no prefix
+    id: str
+
+    title: str
+
+    # markdown content of the post; could be empty
+    selftext: str
+    # external link (or self link)
+    url: str
+    # link to reddit thread (sans domain)
+    permalink: str
+
+    upvote_ratio: float
+    score: int
+    total_awards_received: int
+
+    num_comments: int
+    over_18: bool
+
+    # timestamp
+    created: float
+
+
 @final
-class CommentWrapper(TypedDict):
+class ResourceWrapper(TypedDict):
     kind: str
-    data: Comment
+    data: Comment | Post
 
 
 @final
-class CommentBody(TypedDict):
+class ResponseBody(TypedDict):
     before: Optional[str]
     after: Optional[str]
     modhash: str
     geo_filter: str
     dist: int
-    children: list[CommentWrapper]
+    children: Sequence[ResourceWrapper]
 
 
 @final
-class CommentsResponse(TypedDict):
-    data: CommentBody
+class SuccessResponse(TypedDict):
+    data: ResponseBody
     kind: Literal["Listing"]
 
 
@@ -94,13 +118,13 @@ class ErorrResponse(TypedDict):
 PAGE_SIZE = 100
 
 
-def load_comments_for_user(username: str) -> list[Comment]:
-    comments: list[Comment] = []
+def _load_paged_resource(resource: Literal["comments", "submitted"], username: str):
+    result = []
     after = None
     # max number of pages we can fetch
     for _ in tqdm(range(10)):
-        response: CommentsResponse | ErorrResponse = requests.get(
-            f"https://www.reddit.com/user/{username}/comments.json",
+        response: SuccessResponse | ErorrResponse = requests.get(
+            f"https://www.reddit.com/user/{username}/{resource}.json",
             {"limit": PAGE_SIZE, "raw_json": 1, "after": after},
             headers={"user-agent": USER_AGENT},
         ).json()
@@ -110,10 +134,18 @@ def load_comments_for_user(username: str) -> list[Comment]:
                 f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
             )
 
-        comments += [c["data"] for c in response["data"]["children"]]
+        result += [c["data"] for c in response["data"]["children"]]
         after = response["data"]["after"]
 
         if len(response["data"]["children"]) < PAGE_SIZE:
             break
 
-    return comments
+    return result
+
+
+def load_comments_for_user(username: str) -> list[Comment]:
+    return _load_paged_resource("comments", username)
+
+
+def load_posts_for_user(username: str) -> list[Post]:
+    return _load_paged_resource("submitted", username)

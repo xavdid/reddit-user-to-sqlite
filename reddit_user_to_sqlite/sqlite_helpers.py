@@ -2,7 +2,12 @@ from typing import Any, Sequence, TypedDict, cast
 
 from sqlite_utils import Database
 
-from reddit_user_to_sqlite.reddit_api import Comment, SubredditFragment, UserFragment
+from reddit_user_to_sqlite.reddit_api import (
+    Comment,
+    Post,
+    SubredditFragment,
+    UserFragment,
+)
 
 
 class SubredditRow(TypedDict):
@@ -69,7 +74,7 @@ def comment_to_comment_row(comment: Comment) -> CommentRow:
         "text": comment["body"],
         "user": comment["author_fullname"][3:],  # strip leading t2_
         "subreddit": comment["subreddit_id"][3:],  # strip leading t5_
-        "permalink": f'https://www.reddit.com{comment["permalink"]}?context=10',
+        "permalink": f'https://old.reddit.com{comment["permalink"]}?context=10',
         "is_submitter": int(comment["is_submitter"]),
         "controversiality": comment["controversiality"],
     }
@@ -81,7 +86,7 @@ def upsert_comments(db: Database, comments: list[Comment]):
         upsert=True,
         pk="id",  # type: ignore
         # update the schema - needed if user does archive first
-        # alter=True,
+        alter=True,  # type: ignore
         foreign_keys=[  # type: ignore
             (
                 "subreddit",
@@ -97,6 +102,63 @@ def upsert_comments(db: Database, comments: list[Comment]):
         # can re-add or assert this later, but the rows aren't created if this is present
         # see: https://github.com/simonw/sqlite-utils/issues/538
         # not_null=["id", "timestamp", "text", "user", "subreddit", "permalink"],
+    )
+
+
+class PostRow(TypedDict):
+    id: str
+    timestamp: int
+    score: int
+    title: str
+    text: str
+    external_url: str
+    user: str
+    subreddit: str
+    permalink: str
+    upvote_ratio: float
+    score: int
+    num_comments: int
+    num_awards: int
+    is_removed: int
+
+
+def post_to_post_row(post: Post) -> PostRow:
+    return {
+        "id": post["id"],
+        "timestamp": int(post["created"]),
+        "score": post["score"],
+        "num_comments": post["num_comments"],
+        "title": post["title"],
+        "text": post["selftext"],
+        "external_url": "" if "reddit.com" in post["url"] else post["url"],
+        "user": post["author_fullname"][3:],
+        "subreddit": post["subreddit_id"][3:],
+        "permalink": f'https://old.reddit.com{post["permalink"]}',
+        "upvote_ratio": post["upvote_ratio"],
+        "score": post["score"],
+        "num_awards": post["total_awards_received"],
+        "is_removed": int(post["selftext"] == "[removed]"),
+    }
+
+
+def upsert_posts(db: Database, posts: list[Post]):
+    db["posts"].insert_all(  # type: ignore
+        map(post_to_post_row, posts),
+        upsert=True,
+        pk="id",  # type: ignore
+        alter=True,  # type: ignore
+        foreign_keys=[  # type: ignore
+            (
+                "subreddit",
+                "subreddits",
+                "id",
+            ),
+            (
+                "user",
+                "users",
+                "id",
+            ),
+        ],
     )
 
 

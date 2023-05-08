@@ -1,10 +1,10 @@
 # reddit-user-to-sqlite
 
-Stores all the content from a specific user in a SQLite database. This includes their comments and will soon include their posts.
+Stores all the content from a specific user in a SQLite database. This includes their comments and their posts.
 
 ## Install
 
-The PyPI package is `reddit-user-to-sqlite` ([PyPI Link]()). Install it globally using [pipx](https://pypa.github.io/pipx/):
+The PyPI package is `reddit-user-to-sqlite` ([PyPI Link](https://pypi.org/project/reddit-user-to-sqlite/)). Install it globally using [pipx](https://pypa.github.io/pipx/):
 
 ```bash
 pipx install reddit-user-to-sqlite
@@ -68,6 +68,17 @@ Finally, create a `metadata.json` file with the following:
             }
           }
         },
+        "posts": {
+          "sort_desc": "timestamp",
+          "plugins": {
+            "datasette-render-markdown": {
+              "columns": ["text"]
+            },
+            "datasette-render-timestamps": {
+              "columns": ["timestamp"]
+            }
+          }
+        },
         "subreddits": {
           "sort": "name"
         }
@@ -108,3 +119,14 @@ In your virtual environment, a simple `pytest` should run the unit test suite.
 ## Motivation
 
 I got nervous when I saw Reddit's [notification of upcoming API changes](https://old.reddit.com/r/reddit/comments/12qwagm/an_update_regarding_reddits_api/). To ensure I could always access data I created, I wanted to make sure I had a backup in place before anything changed in a big way.
+
+## FAQs
+
+### Why do some of my posts say `[removed]` even though I can see them?
+
+If a post is removed, only the mods and the user who posted it can see its text. Since this tool currently runs without any authentication, those removed posts can't be fetched via the API.
+
+This will be fixed in a future release, either by:
+
+- (planned) being able to pull data from a GDPR archive
+- (maybe) adding support for authentication, so you can see your own posts
