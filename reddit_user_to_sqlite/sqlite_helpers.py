@@ -131,27 +131,32 @@ class PostRow(TypedDict):
 
 
 def post_to_post_row(post: Post) -> PostRow:
-    return {
-        "id": post["id"],
-        "timestamp": int(post["created"]),
-        "score": post["score"],
-        "num_comments": post["num_comments"],
-        "title": post["title"],
-        "text": post["selftext"],
-        "external_url": "" if "reddit.com" in post["url"] else post["url"],
-        "user": post["author_fullname"][3:],
-        "subreddit": post["subreddit_id"][3:],
-        "permalink": f'https://old.reddit.com{post["permalink"]}',
-        "upvote_ratio": post["upvote_ratio"],
-        "score": post["score"],
-        "num_awards": post["total_awards_received"],
-        "is_removed": int(post["selftext"] == "[removed]"),
-    }
+    try:
+        return {
+            "id": post["id"],
+            "timestamp": int(post["created"]),
+            "score": post["score"],
+            "num_comments": post["num_comments"],
+            "title": post["title"],
+            "text": post["selftext"],
+            "external_url": "" if "reddit.com" in post["url"] else post["url"],
+            "user": post["author_fullname"][3:],
+            "subreddit": post["subreddit_id"][3:],
+            "permalink": f'https://old.reddit.com{post["permalink"]}',
+            "upvote_ratio": post["upvote_ratio"],
+            "score": post["score"],
+            "num_awards": post["total_awards_received"],
+            "is_removed": int(post["selftext"] == "[removed]"),
+        }
+    except KeyError:
+        print(f"failed on {post['id']}")
+        # TODO: handle removed comments better
+        pass
 
 
 def upsert_posts(db: Database, posts: list[Post]):
     db["posts"].insert_all(  # type: ignore
-        map(post_to_post_row, posts),
+        [p for p in map(post_to_post_row, posts) if p],
         upsert=True,
         pk="id",  # type: ignore
         alter=True,  # type: ignore

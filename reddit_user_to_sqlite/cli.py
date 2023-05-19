@@ -11,6 +11,7 @@ from tqdm import tqdm
 from reddit_user_to_sqlite.helpers import batched, clean_username
 from reddit_user_to_sqlite.reddit_api import (
     Comment,
+    Post,
     load_comments_for_user,
     load_info,
     load_posts_for_user,
@@ -85,20 +86,18 @@ def user(db_path: str, username: str):
 def archive(archive_path: Path, db_path: str):
     if not (comments_file := archive_path / "comments.csv").exists():
         raise ValueError(
-            f'Ensure path "{archive_path}" points to an unzipped Reddit GDPR archive; comments.csv not found in the expected post.'
+            f'Ensure path "{archive_path}" points to an unzipped Reddit GDPR archive; comments.csv not found in the expected spot.'
         )
 
     db = Database(db_path)
-    existing_ids = {row["id"] for row in db["comments"].rows}
+    existing_comment_ids = {row["id"] for row in db["comments"].rows}
 
     with open(comments_file) as comment_archive_rows:
         comments_to_fetch = [
             f't1_{c["id"]}'
             for c in DictReader(comment_archive_rows)
-            if c["id"] not in existing_ids
+            if c["id"] not in existing_comment_ids
         ]
-
-    # comments_to_fetch = comments_to_fetch[:50]
 
     comments = cast(
         list[Comment],
@@ -111,6 +110,35 @@ def archive(archive_path: Path, db_path: str):
 
     if comments:
         # TODO: handle all rows having bad data
-        insert_user(db, next(c for c in comments if "author_fullname" in c))
+        # insert_user(db, next(c for c in comments if "author_fullname" in c))
         insert_subreddits(db, comments)
         upsert_comments(db, comments)
+
+    if not (posts_file := archive_path / "posts.csv").exists():
+        raise ValueError(
+            f'Ensure path "{archive_path}" points to an unzipped Reddit GDPR archive; posts.csv not found in the expected spot.'
+        )
+
+    existing_post_ids = {row["id"] for row in db["posts"].rows}
+
+    with open(posts_file) as post_archive_rows:
+        posts_to_fetch = [
+            f't3_{p["id"]}'
+            for p in DictReader(post_archive_rows)
+            if p["id"] not in existing_post_ids
+        ]
+
+    posts = cast(
+        list[Post],
+        list(
+            chain.from_iterable(
+                load_info(batch) for batch in batched(tqdm(posts_to_fetch), 100)
+            )
+        ),
+    )
+
+    if posts:
+        # TODO: handle all rows having bad data
+        # insert_user(db, next(p for p in posts if "author_fullname" in p))
+        insert_subreddits(db, posts)
+        upsert_posts(db, posts)
