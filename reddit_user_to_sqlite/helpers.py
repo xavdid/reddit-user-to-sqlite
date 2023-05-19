@@ -1,4 +1,20 @@
 import re
+from itertools import islice
+from typing import Iterable, TypeVar
+
+T = TypeVar("T")
+
+
+# https://docs.python.org/3.11/library/itertools.html#itertools-recipes
+# available natively in 3.12
+def batched(iterable: Iterable[T], n: int) -> Iterable[tuple[T]]:
+    "Batch data into tuples of length n. The last batch may be shorter."
+    # batched('ABCDEFG', 3) --> ABC DEF G
+    if n < 1:
+        raise ValueError("n must be at least one")
+    it = iter(iterable)
+    while batch := tuple(islice(it, n)):
+        yield batch
 
 
 def clean_username(username: str) -> str:

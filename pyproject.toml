@@ -1,6 +1,6 @@
 [project]
 name = "reddit-user-to-sqlite"
-version = "0.2.0"
+version = "0.3.0"
 
 authors = [{ name = "David Brownman", email = "beamneocube@gmail.com" }]
 description = "Create a SQLite database containing data pulled from Reddit about a single user."

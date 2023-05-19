@@ -1,3 +1,4 @@
+from pprint import pprint
 from typing import Any, Sequence, TypedDict, cast
 
 from sqlite_utils import Database
@@ -14,6 +15,8 @@ class SubredditRow(TypedDict):
     id: str
     name: str
     type: str
+    # TODO: handle archiving and updating
+    # archives_posts: bool
 
 
 def comment_to_subreddit_row(comment: SubredditFragment) -> SubredditRow:
@@ -67,22 +70,27 @@ class CommentRow(TypedDict):
 
 
 def comment_to_comment_row(comment: Comment) -> CommentRow:
-    return {
-        "id": comment["id"],
-        "timestamp": int(comment["created"]),
-        "score": comment["score"],
-        "text": comment["body"],
-        "user": comment["author_fullname"][3:],  # strip leading t2_
-        "subreddit": comment["subreddit_id"][3:],  # strip leading t5_
-        "permalink": f'https://old.reddit.com{comment["permalink"]}?context=10',
-        "is_submitter": int(comment["is_submitter"]),
-        "controversiality": comment["controversiality"],
-    }
+    try:
+        return {
+            "id": comment["id"],
+            "timestamp": int(comment["created"]),
+            "score": comment["score"],
+            "text": comment["body"],
+            "user": comment["author_fullname"][3:],  # strip leading t2_
+            "subreddit": comment["subreddit_id"][3:],  # strip leading t5_
+            "permalink": f'https://old.reddit.com{comment["permalink"]}?context=10',
+            "is_submitter": int(comment["is_submitter"]),
+            "controversiality": comment["controversiality"],
+        }
+    except KeyError:
+        print(f"failed on {comment['id']}")
+        # TODO: handle removed comments better
+        pass
 
 
 def upsert_comments(db: Database, comments: list[Comment]):
     db["comments"].insert_all(  # type: ignore
-        map(comment_to_comment_row, comments),
+        [c for c in map(comment_to_comment_row, comments) if c],
         upsert=True,
         pk="id",  # type: ignore
         # update the schema - needed if user does archive first

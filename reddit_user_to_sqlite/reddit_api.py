@@ -1,7 +1,7 @@
-from typing import Literal, Optional, Sequence, TypedDict, final
+from typing import Any, Iterable, Literal, Optional, Sequence, TypedDict, final
 
 import requests
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 USER_AGENT = "reddit-to-sqlite"
 
@@ -86,10 +86,14 @@ class Post(SubredditFragment, UserFragment):
     created: float
 
 
+class Subreddit(TypedDict):
+    should_archive_posts: bool
+
+
 @final
 class ResourceWrapper(TypedDict):
     kind: str
-    data: Comment | Post
+    data: Comment | Post | Subreddit
 
 
 @final
@@ -118,22 +122,30 @@ class ErorrResponse(TypedDict):
 PAGE_SIZE = 100
 
 
+def _call_reddit_api(url: str, params: dict[str, Any] | None = None):
+    response: SuccessResponse | ErorrResponse = requests.get(
+        url,
+        {"limit": PAGE_SIZE, "raw_json": 1, **(params or {})},
+        headers={"user-agent": USER_AGENT},
+    ).json()
+
+    if "error" in response:
+        raise ValueError(
+            f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
+        )
+
+    return response
+
+
 def _load_paged_resource(resource: Literal["comments", "submitted"], username: str):
     result = []
     after = None
     # max number of pages we can fetch
-    for _ in tqdm(range(10)):
-        response: SuccessResponse | ErorrResponse = requests.get(
+    for _ in trange(10):
+        response = _call_reddit_api(
             f"https://www.reddit.com/user/{username}/{resource}.json",
-            {"limit": PAGE_SIZE, "raw_json": 1, "after": after},
-            headers={"user-agent": USER_AGENT},
-        ).json()
-
-        if "error" in response:
-            raise ValueError(
-                f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
-            )
-
+            params={"after": after},
+        )
         result += [c["data"] for c in response["data"]["children"]]
         after = response["data"]["after"]
 
@@ -149,3 +161,10 @@ def load_comments_for_user(username: str) -> list[Comment]:
 
 def load_posts_for_user(username: str) -> list[Post]:
     return _load_paged_resource("submitted", username)
+
+
+def load_info(resources: Iterable[str]) -> list[Comment | Post | Subreddit]:
+    response = _call_reddit_api(
+        "https://www.reddit.com/api/info.json", params={"id": ",".join(resources)}
+    )
+    return [c["data"] for c in response["data"]["children"]]

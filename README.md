@@ -110,7 +110,7 @@ When in a virtual environment, run the following:
 pip install -e '.[test]'
 ```
 
-This installs the package in `--edit` mode and makes its dependencies available.
+This installs the package in `--edit` mode and makes its dependencies available. You can now run `reddit-user-to-sqlite` to invoke the CLI.
 
 ### Running Tests
 
@@ -130,3 +130,5 @@ This will be fixed in a future release, either by:
 
 - (planned) being able to pull data from a GDPR archive
 - (maybe) adding support for authentication, so you can see your own posts
+
+https://www.reddit.com/r/modnews/comments/py2xy2/voting_commenting_on_archived_posts/
