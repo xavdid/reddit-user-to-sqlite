@@ -1,4 +1,4 @@
-from typing import Any, Generator, Literal, Optional, Protocol
+from typing import Any, Generator, Literal, Optional, Protocol, Sequence
 
 import pytest
 import responses
@@ -369,7 +369,7 @@ def empty_response():
     return _wrap_response()
 
 
-class MockFunc(Protocol):
+class MockPagedFunc(Protocol):
     def __call__(
         self,
         resource: Literal["comments", "submitted"],
@@ -380,7 +380,7 @@ class MockFunc(Protocol):
 
 
 @pytest.fixture
-def mock_request() -> Generator[MockFunc, None, None]:
+def mock_paged_request() -> Generator[MockPagedFunc, None, None]:
     with responses.RequestsMock() as mock:
 
         def _mock_request(
@@ -392,6 +392,34 @@ def mock_request() -> Generator[MockFunc, None, None]:
 
             return mock.get(
                 f"https://www.reddit.com/user/xavdid/{resource}.json",
+                match=[
+                    matchers.query_param_matcher(params),
+                    matchers.header_matcher({"user-agent": USER_AGENT}),
+                ],
+                json=json,
+            )
+
+        yield _mock_request
+
+
+class MockInfoFunc(Protocol):
+    def __call__(self, ids: str, json: Any, limit=100) -> BaseResponse:
+        ...
+
+
+@pytest.fixture
+def mock_info_request() -> Generator[MockInfoFunc, None, None]:
+    with responses.RequestsMock() as mock:
+
+        def _mock_request(
+            ids: str,
+            json: Any,
+            limit=100,
+        ):
+            params = {"limit": limit, "raw_json": 1, "id": ids}
+
+            return mock.get(
+                "https://www.reddit.com/api/info.json",
                 match=[
                     matchers.query_param_matcher(params),
                     matchers.header_matcher({"user-agent": USER_AGENT}),

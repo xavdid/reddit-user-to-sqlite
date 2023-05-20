@@ -1,5 +1,5 @@
 from pprint import pprint
-from typing import Any, Sequence, TypedDict, cast
+from typing import Any, Callable, Iterable, Sequence, TypeVar, TypedDict, cast
 
 from sqlite_utils import Database
 
@@ -27,7 +27,7 @@ def comment_to_subreddit_row(comment: SubredditFragment) -> SubredditRow:
     }
 
 
-def insert_subreddits(db: Database, subreddits: Sequence[SubredditFragment]):
+def insert_subreddits(db: Database, subreddits: Iterable[SubredditFragment]):
     db["subreddits"].insert_all(  # type: ignore
         map(comment_to_subreddit_row, subreddits),
         ignore=True,  # type: ignore
@@ -69,28 +69,35 @@ class CommentRow(TypedDict):
     controversiality: int
 
 
-def comment_to_comment_row(comment: Comment) -> CommentRow:
-    try:
-        return {
-            "id": comment["id"],
-            "timestamp": int(comment["created"]),
-            "score": comment["score"],
-            "text": comment["body"],
-            "user": comment["author_fullname"][3:],  # strip leading t2_
-            "subreddit": comment["subreddit_id"][3:],  # strip leading t5_
-            "permalink": f'https://old.reddit.com{comment["permalink"]}?context=10',
-            "is_submitter": int(comment["is_submitter"]),
-            "controversiality": comment["controversiality"],
-        }
-    except KeyError:
-        print(f"failed on {comment['id']}")
-        # TODO: handle removed comments better
-        pass
+def comment_to_comment_row(comment: Comment) -> CommentRow | None:
+    if "author_fullname" not in comment:
+        return
+
+    return {
+        "id": comment["id"],
+        "timestamp": int(comment["created"]),
+        "score": comment["score"],
+        "text": comment["body"],
+        "user": comment["author_fullname"][3:],  # strip leading t2_
+        "subreddit": comment["subreddit_id"][3:],  # strip leading t5_
+        "permalink": f'https://old.reddit.com{comment["permalink"]}?context=10',
+        "is_submitter": int(comment["is_submitter"]),
+        "controversiality": comment["controversiality"],
+    }
 
 
-def upsert_comments(db: Database, comments: list[Comment]):
+T = TypeVar("T")
+U = TypeVar("U")
+
+
+def apply_and_filter(filterer: Callable[[T], U | None], items: Iterable[T]) -> list[U]:
+    return [c for c in map(filterer, items) if c]
+
+
+def upsert_comments(db: Database, comments: Iterable[Comment]) -> int:
+    comment_rows = apply_and_filter(comment_to_comment_row, comments)
     db["comments"].insert_all(  # type: ignore
-        [c for c in map(comment_to_comment_row, comments) if c],
+        comment_rows,
         upsert=True,
         pk="id",  # type: ignore
         # update the schema - needed if user does archive first
@@ -111,6 +118,7 @@ def upsert_comments(db: Database, comments: list[Comment]):
         # see: https://github.com/simonw/sqlite-utils/issues/538
         # not_null=["id", "timestamp", "text", "user", "subreddit", "permalink"],
     )
+    return len(comment_rows)
 
 
 class PostRow(TypedDict):
@@ -130,33 +138,32 @@ class PostRow(TypedDict):
     is_removed: int
 
 
-def post_to_post_row(post: Post) -> PostRow:
-    try:
-        return {
-            "id": post["id"],
-            "timestamp": int(post["created"]),
-            "score": post["score"],
-            "num_comments": post["num_comments"],
-            "title": post["title"],
-            "text": post["selftext"],
-            "external_url": "" if "reddit.com" in post["url"] else post["url"],
-            "user": post["author_fullname"][3:],
-            "subreddit": post["subreddit_id"][3:],
-            "permalink": f'https://old.reddit.com{post["permalink"]}',
-            "upvote_ratio": post["upvote_ratio"],
-            "score": post["score"],
-            "num_awards": post["total_awards_received"],
-            "is_removed": int(post["selftext"] == "[removed]"),
-        }
-    except KeyError:
-        print(f"failed on {post['id']}")
-        # TODO: handle removed comments better
-        pass
+def post_to_post_row(post: Post) -> PostRow | None:
+    if "author_fullname" not in post:
+        return
+
+    return {
+        "id": post["id"],
+        "timestamp": int(post["created"]),
+        "score": post["score"],
+        "num_comments": post["num_comments"],
+        "title": post["title"],
+        "text": post["selftext"],
+        "external_url": "" if "reddit.com" in post["url"] else post["url"],
+        "user": post["author_fullname"][3:],
+        "subreddit": post["subreddit_id"][3:],
+        "permalink": f'https://old.reddit.com{post["permalink"]}',
+        "upvote_ratio": post["upvote_ratio"],
+        "score": post["score"],
+        "num_awards": post["total_awards_received"],
+        "is_removed": int(post["selftext"] == "[removed]"),
+    }
 
 
-def upsert_posts(db: Database, posts: list[Post]):
+def upsert_posts(db: Database, posts: Iterable[Post]) -> int:
+    post_rows = apply_and_filter(post_to_post_row, posts)
     db["posts"].insert_all(  # type: ignore
-        [p for p in map(post_to_post_row, posts) if p],
+        post_rows,
         upsert=True,
         pk="id",  # type: ignore
         alter=True,  # type: ignore
@@ -173,6 +180,7 @@ def upsert_posts(db: Database, posts: list[Post]):
             ),
         ],
     )
+    return len(post_rows)
 
 
 def ensure_fts(db: Database):

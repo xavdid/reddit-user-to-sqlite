@@ -1,7 +1,18 @@
-from typing import Any, Iterable, Literal, Optional, Sequence, TypedDict, final
+from typing import (
+    Any,
+    Iterable,
+    Literal,
+    NotRequired,
+    Optional,
+    Sequence,
+    TypedDict,
+    final,
+)
 
 import requests
 from tqdm import tqdm, trange
+
+from reddit_user_to_sqlite.helpers import batched
 
 USER_AGENT = "reddit-to-sqlite"
 
@@ -20,7 +31,7 @@ class UserFragment(TypedDict):
     # comment author username
     author: str
     # comment author prefixed id
-    author_fullname: str
+    author_fullname: NotRequired[str]
 
 
 class Comment(SubredditFragment, UserFragment):
@@ -163,8 +174,17 @@ def load_posts_for_user(username: str) -> list[Post]:
     return _load_paged_resource("submitted", username)
 
 
-def load_info(resources: Iterable[str]) -> list[Comment | Post | Subreddit]:
-    response = _call_reddit_api(
-        "https://www.reddit.com/api/info.json", params={"id": ",".join(resources)}
-    )
-    return [c["data"] for c in response["data"]["children"]]
+def load_info(resources: Sequence[str]) -> list[Comment | Post | Subreddit]:
+    result = []
+
+    # reddit API fails silently if more than 100 ids are passed
+    # if (l := len(resources)) >= 100:
+    #     raise ValueError(f"You can load max 100 items at a time, got {l}")
+
+    for batch in batched(tqdm(resources), PAGE_SIZE):
+        response = _call_reddit_api(
+            "https://www.reddit.com/api/info.json", params={"id": ",".join(batch)}
+        )
+        result += [c["data"] for c in response["data"]["children"]]
+
+    return result

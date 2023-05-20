@@ -3,14 +3,14 @@ from click.testing import CliRunner
 from sqlite_utils import Database
 
 from reddit_user_to_sqlite.cli import cli
-from tests.conftest import MockFunc
+from tests.conftest import MockPagedFunc
 
 
 @pytest.mark.parametrize("username", ["xavdid", "/u/xavdid", "u/xavdid"])
 def test_load_data_for_user(
     tmp_db_path: str,
     tmp_db: Database,
-    mock_request: MockFunc,
+    mock_paged_request: MockPagedFunc,
     username,
     comment_response,
     all_posts_response,
@@ -19,8 +19,8 @@ def test_load_data_for_user(
     stored_external_post,
     stored_removed_post,
 ):
-    comment_response = mock_request(resource="comments", json=comment_response)
-    post_response = mock_request(resource="submitted", json=all_posts_response)
+    comment_response = mock_paged_request(resource="comments", json=comment_response)
+    post_response = mock_paged_request(resource="submitted", json=all_posts_response)
 
     result = CliRunner().invoke(cli, ["user", username, "--db", tmp_db_path])
     assert not result.exception, result.exception
@@ -79,8 +79,8 @@ def test_load_live_data(
     assert stored_self_post["id"] in {p["id"] for p in posts}
 
 
-def test_missing_user_errors(tmp_db_path: str, mock_request: MockFunc):
-    mock_request(
+def test_missing_user_errors(tmp_db_path: str, mock_paged_request: MockPagedFunc):
+    mock_paged_request(
         resource="comments", json={"error": 404, "message": "no user by that name"}
     )
     result = CliRunner().invoke(cli, ["user", "xavdid", "--db", tmp_db_path])
@@ -92,9 +92,9 @@ def test_missing_user_errors(tmp_db_path: str, mock_request: MockFunc):
     )
 
 
-def test_no_data(tmp_db_path: str, mock_request: MockFunc, empty_response):
-    mock_request(resource="comments", json=empty_response)
-    mock_request(resource="submitted", json=empty_response)
+def test_no_data(tmp_db_path: str, mock_paged_request: MockPagedFunc, empty_response):
+    mock_paged_request(resource="comments", json=empty_response)
+    mock_paged_request(resource="submitted", json=empty_response)
 
     result = CliRunner().invoke(cli, ["user", "xavdid", "--db", tmp_db_path])
 
@@ -106,13 +106,13 @@ def test_no_data(tmp_db_path: str, mock_request: MockFunc, empty_response):
 def test_comments_but_no_posts(
     tmp_db_path: str,
     tmp_db: Database,
-    mock_request: MockFunc,
+    mock_paged_request: MockPagedFunc,
     empty_response,
     comment_response,
     stored_comment,
 ):
-    mock_request(resource="comments", json=comment_response)
-    mock_request(resource="submitted", json=empty_response)
+    mock_paged_request(resource="comments", json=comment_response)
+    mock_paged_request(resource="submitted", json=empty_response)
 
     result = CliRunner().invoke(cli, ["user", "xavdid", "--db", tmp_db_path])
     assert not result.exception, result.exception
@@ -125,13 +125,13 @@ def test_comments_but_no_posts(
 def test_posts_but_no_comments(
     tmp_db_path: str,
     tmp_db: Database,
-    mock_request: MockFunc,
+    mock_paged_request: MockPagedFunc,
     empty_response,
     self_post_response,
     stored_self_post,
 ):
-    mock_request(resource="comments", json=empty_response)
-    mock_request(resource="submitted", json=self_post_response)
+    mock_paged_request(resource="comments", json=empty_response)
+    mock_paged_request(resource="submitted", json=self_post_response)
 
     result = CliRunner().invoke(cli, ["user", "xavdid", "--db", tmp_db_path])
     assert not result.exception, result.exception
