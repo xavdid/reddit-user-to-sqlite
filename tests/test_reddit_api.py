@@ -4,11 +4,13 @@ import pytest
 
 from reddit_user_to_sqlite.reddit_api import (
     SuccessResponse,
+    get_user_id,
     load_comments_for_user,
     load_info,
     load_posts_for_user,
+    _raise_reddit_error,
 )
-from tests.conftest import MockInfoFunc, MockPagedFunc
+from tests.conftest import MockInfoFunc, MockPagedFunc, MockUserFunc, empty_response
 
 
 def test_load_comments(mock_paged_request: MockPagedFunc, comment_response, comment):
@@ -88,6 +90,33 @@ def test_load_info(mock_info_request: MockInfoFunc, comment_response, comment):
 def test_load_info_pages(mock_info_request: MockInfoFunc, comment_response, comment):
     mock_info_request("a,b", json=comment_response, limit=2)
     mock_info_request("c,d", json=comment_response, limit=2)
-    mock_info_request("e,f", json=comment_response, limit=2)
+    mock_info_request("e", json=comment_response, limit=2)
 
-    assert load_info(["a", "b", "c", "d", "e", "f"]) == [comment] * 3
+    assert load_info(["a", "b", "c", "d", "e"]) == [comment] * 3
+
+
+def test_load_info_empty(mock_info_request: MockInfoFunc, empty_response):
+    mock_info_request("a,b,c,d,e,f,g,h", json=empty_response)
+
+    assert load_info(["a", "b", "c", "d", "e", "f", "g", "h"]) == []
+
+
+def test_raise_reddit_error():
+    assert _raise_reddit_error({}) == None  # no raise, no return
+
+    with pytest.raises(ValueError) as err:
+        _raise_reddit_error({"error": 123, "message": "cool"})
+
+    assert str(err.value) == "Received API error from Reddit (code 123): cool"
+
+
+def test_get_user_id(mock_user_request: MockUserFunc, user_response):
+    mock_user_request("xavdid", json=user_response)
+
+    assert get_user_id("xavdid") == "np8mb41h"
+
+
+def test_get_user_id_unknown_user(mock_user_request: MockUserFunc):
+    mock_user_request("xavdid", json={"message": "Not Found", "error": 404})
+    with pytest.raises(ValueError):
+        get_user_id("xavdid")

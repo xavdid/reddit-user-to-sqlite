@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Generator, Literal, Optional, Protocol, Sequence
 
 import pytest
@@ -7,12 +8,6 @@ from sqlite_utils import Database
 
 from reddit_user_to_sqlite.reddit_api import USER_AGENT, Post, SuccessResponse
 from reddit_user_to_sqlite.sqlite_helpers import CommentRow, PostRow
-
-
-@pytest.fixture
-def mocked_responses():
-    with responses.RequestsMock() as rsps:
-        yield rsps
 
 
 @pytest.fixture
@@ -47,6 +42,9 @@ def _wrap_response(*children) -> SuccessResponse:
 
 @pytest.fixture
 def comment():
+    """
+    A raw (unwrapped) comment object from the Reddit API
+    """
     return {
         "subreddit_id": "t5_2t3ad",
         "approved_at_utc": None,
@@ -129,6 +127,9 @@ def comment():
 
 @pytest.fixture
 def stored_comment() -> CommentRow:
+    """
+    a serialized comment row in the db
+    """
     return {
         "controversiality": 0,
         "id": "jj0ti6f",
@@ -144,11 +145,17 @@ def stored_comment() -> CommentRow:
 
 @pytest.fixture
 def comment_response(comment) -> SuccessResponse:
+    """
+    The full response from Reddit with a comment child
+    """
     return _wrap_response(comment)
 
 
 @pytest.fixture
 def self_post():
+    """
+    A raw (unwrapped) self post object from the Reddit API
+    """
     return {
         "all_awardings": [],
         "allow_live_comments": False,
@@ -317,6 +324,9 @@ def self_post_response(self_post):
 
 @pytest.fixture
 def removed_post(self_post: Post) -> Post:
+    """
+    A raw (unwrapped) removed post object from the Reddit API
+    """
     return {
         **self_post,
         "selftext": "[removed]",
@@ -341,6 +351,9 @@ def removed_post_response(removed_post):
 
 @pytest.fixture
 def external_post(self_post: Post) -> Post:
+    """
+    A raw (unwrapped) external post object from the Reddit API
+    """
     return {
         **self_post,
         "selftext": "",
@@ -381,6 +394,9 @@ class MockPagedFunc(Protocol):
 
 @pytest.fixture
 def mock_paged_request() -> Generator[MockPagedFunc, None, None]:
+    """
+    call this to mock a list of items for a user
+    """
     with responses.RequestsMock() as mock:
 
         def _mock_request(
@@ -409,6 +425,9 @@ class MockInfoFunc(Protocol):
 
 @pytest.fixture
 def mock_info_request() -> Generator[MockInfoFunc, None, None]:
+    """
+    call this to mirror loading info about a sequence of fullnames (type-prefixed ids)
+    """
     with responses.RequestsMock() as mock:
 
         def _mock_request(
@@ -428,6 +447,153 @@ def mock_info_request() -> Generator[MockInfoFunc, None, None]:
             )
 
         yield _mock_request
+
+
+@pytest.fixture
+def user_response():
+    return {
+        "kind": "t2",
+        "data": {
+            "is_employee": False,
+            "is_friend": False,
+            "subreddit": {
+                "default_set": True,
+                "user_is_contributor": None,
+                "banner_img": "",
+                "allowed_media_in_comments": [],
+                "user_is_banned": None,
+                "free_form_reports": True,
+                "community_icon": None,
+                "show_media": True,
+                "icon_color": "#51E9F4",
+                "user_is_muted": None,
+                "display_name": "u_xavdid",
+                "header_img": None,
+                "title": "",
+                "previous_names": [],
+                "over_18": False,
+                "icon_size": [256, 256],
+                "primary_color": "",
+                "icon_img": "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_5.png",
+                "description": "",
+                "submit_link_label": "",
+                "header_size": None,
+                "restrict_posting": True,
+                "restrict_commenting": False,
+                "subscribers": 0,
+                "submit_text_label": "",
+                "is_default_icon": True,
+                "link_flair_position": "",
+                "display_name_prefixed": "u/xavdid",
+                "key_color": "",
+                "name": "t5_6fndvc",
+                "is_default_banner": True,
+                "url": "/user/xavdid/",
+                "quarantine": False,
+                "banner_size": None,
+                "user_is_moderator": None,
+                "accept_followers": True,
+                "public_description": "",
+                "link_flair_enabled": False,
+                "disable_contributor_requests": False,
+                "subreddit_type": "user",
+                "user_is_subscriber": None,
+            },
+            "snoovatar_size": None,
+            "awardee_karma": 0,
+            "id": "np8mb41h",
+            "verified": True,
+            "is_gold": False,
+            "is_mod": False,
+            "awarder_karma": 0,
+            "has_verified_email": True,
+            "icon_img": "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_5.png",
+            "hide_from_robots": False,
+            "link_karma": 1,
+            "is_blocked": False,
+            "total_karma": 3,
+            "pref_show_snoovatar": False,
+            "name": "xavdid",
+            "created": 1653622688.0,
+            "created_utc": 1653622688.0,
+            "snoovatar_img": "",
+            "comment_karma": 2,
+            "accept_followers": True,
+            "has_subscribed": False,
+        },
+    }
+
+
+class MockUserFunc(Protocol):
+    def __call__(self, username: str, json: Any) -> BaseResponse:
+        ...
+
+
+@pytest.fixture
+def mock_user_request() -> Generator[MockUserFunc, None, None]:
+    """
+    call this to mirror loading info about a sequence of fullnames (type-prefixed ids)
+    """
+    with responses.RequestsMock() as mock:
+
+        def _mock_request(username: str, json: Any):
+            return mock.get(
+                f"https://www.reddit.com/user/{username}/about.json",
+                match=[
+                    matchers.header_matcher({"user-agent": USER_AGENT}),
+                ],
+                json=json,
+            )
+
+        yield _mock_request
+
+
+@pytest.fixture
+def archive_dir(tmp_path: Path):
+    (archive_dir := tmp_path / "archive").mkdir()
+    return archive_dir
+
+
+def _build_test_file(archive_dir: Path, filename: str, lines: list[str]):
+    """
+    write `lines` into `archive_dir/filename`.
+    """
+    (new_file := archive_dir / filename).write_text("\n".join(lines))
+    return new_file
+
+
+@pytest.fixture
+def stats_file(archive_dir: Path):
+    """
+    write a basic statistics file into the archive directory
+    """
+
+    return _build_test_file(
+        archive_dir,
+        "statistics.csv",
+        [
+            "statistic,value",
+            "account name,xavdid",
+            "export time,2023-05-02 06:57:14 UTC",
+            "is_deleted,False",
+            "registration date,2014-05-19 22:02:20 UTC",
+            "email verified,True",
+            "email address,whatever@gmail.com",
+        ],
+    )
+
+
+@pytest.fixture
+def comments_file(archive_dir: Path):
+    return _build_test_file(archive_dir, "comments.csv", ["id", "a", "b", "c"])
+
+
+@pytest.fixture
+def posts_file(archive_dir: Path):
+    return _build_test_file(archive_dir, "posts.csv", ["id", "d", "e", "f"])
+
+
+# ---
 
 
 # https://docs.pytest.org/en/latest/example/simple.html#control-skipping-of-tests-according-to-command-line-option

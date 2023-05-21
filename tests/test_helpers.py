@@ -1,6 +1,6 @@
 import pytest
 
-from reddit_user_to_sqlite.helpers import clean_username
+from reddit_user_to_sqlite.helpers import clean_username, any_object_has_username
 
 
 @pytest.mark.parametrize(
@@ -24,3 +24,11 @@ def test_fixture_modifications(self_post, removed_post):
 def test_unique_fixture_ids(self_post, removed_post, external_post):
     # all post types should have unique ids
     assert len({p["id"] for p in [self_post, removed_post, external_post]}) == 3
+
+
+def test_verify_username():
+    assert any_object_has_username([{"asdf": 1}, {"author_fullname": "xavdid"}]) == True
+
+
+def test_failing_verify_username():
+    assert any_object_has_username([{"asdf": 1}, {"author": "xavdid"}]) == False

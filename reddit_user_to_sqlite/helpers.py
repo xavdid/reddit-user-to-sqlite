@@ -27,8 +27,8 @@ def clean_username(username: str) -> str:
     return username
 
 
-def find_object_with_username(items):
+def any_object_has_username(items) -> bool:
     try:
-        return next(c for c in items if "author_fullname" in c)
+        return bool(next(c for c in items if "author_fullname" in c))
     except StopIteration:
-        pass
+        return False

@@ -9,7 +9,7 @@ from reddit_user_to_sqlite.csv_helpers import (
     get_username_from_archive,
     load_ids_from_file,
 )
-from reddit_user_to_sqlite.helpers import clean_username, find_object_with_username
+from reddit_user_to_sqlite.helpers import clean_username, any_object_has_username
 from reddit_user_to_sqlite.reddit_api import (
     Comment,
     Post,
@@ -117,12 +117,8 @@ def archive(archive_path: Path, db_path: str):
     click.echo("\nFetching info about posts")
     posts = cast(list[Post], load_info(post_ids))
 
-    obj_with_username = find_object_with_username(
-        comments
-    ) or find_object_with_username(posts)
-    if not obj_with_username:
-        username = get_username_from_archive(archive_path)
-        if username:
+    if not (any_object_has_username(comments) or any_object_has_username(posts)):
+        if username := get_username_from_archive(archive_path):
             user_id = get_user_id(username)
             comments = add_user_fragment(comments, username, user_id)
             posts = add_user_fragment(posts, username, user_id)
