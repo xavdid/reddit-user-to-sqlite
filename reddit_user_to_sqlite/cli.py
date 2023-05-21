@@ -1,18 +1,19 @@
-from csv import DictReader
 from functools import partial
-from itertools import chain
 from pathlib import Path
-from pprint import pprint
-from typing import Callable, Iterable, Literal, TypeVar, cast
+from typing import Callable, Iterable, TypeVar, cast
 
 import click
 from sqlite_utils import Database
-from tqdm import tqdm
 
-from reddit_user_to_sqlite.helpers import batched, clean_username
+from reddit_user_to_sqlite.csv_helpers import (
+    get_username_from_archive,
+    load_ids_from_file,
+)
+from reddit_user_to_sqlite.helpers import clean_username, find_object_with_username
 from reddit_user_to_sqlite.reddit_api import (
     Comment,
     Post,
+    get_user_id,
     load_comments_for_user,
     load_info,
     load_posts_for_user,
@@ -40,13 +41,13 @@ T = TypeVar("T", Comment, Post)
 
 def _save_items(
     db: Database, items: list[T], upsert_func: Callable[[Database, Iterable[T]], int]
-):
-    if items:
-        # TODO: handle no items have a user_fullname
-        # insert_user(db, next(c for c in comments if "author_fullname" in c))
-        insert_user(db, items[0])
-        insert_subreddits(db, items)
-        upsert_func(db, items)
+) -> int:
+    if not items:
+        return 0
+
+    insert_user(db, items[0])
+    insert_subreddits(db, items)
+    return upsert_func(db, items)
 
 
 save_comments = partial(_save_items, upsert_func=upsert_comments)
@@ -64,17 +65,19 @@ save_posts = partial(_save_items, upsert_func=upsert_posts)
 )
 def user(db_path: str, username: str):
     username = clean_username(username)
-    click.echo(f"loading data about /u/{username} into {db_path}\n")
+    click.echo(f"loading data about /u/{username} into {db_path}")
 
     db = Database(db_path)
 
-    click.echo("fetching (up to 10 pages of) comments")
+    click.echo("\nfetching (up to 10 pages of) comments")
     comments = load_comments_for_user(username)
     save_comments(db, comments)
+    click.echo(f"saved/updated {len(comments)} comments")
 
     click.echo("\nfetching (up to 10 pages of) posts")
     posts = load_posts_for_user(username)
     save_posts(db, posts)
+    click.echo(f"saved/updated {len(posts)} posts")
 
     if not (comments or posts):
         raise click.ClickException(f"no data found for username: {username}")
@@ -82,26 +85,11 @@ def user(db_path: str, username: str):
     ensure_fts(db)
 
 
-ItemType = Literal["comments", "posts"]
-
-
-def load_ids_from_file(
-    db: Database, archive_path: Path, item_type: ItemType
-) -> list[str]:
-    filename = f"{item_type}.csv"
-    if not (file := archive_path / filename).exists():
-        raise ValueError(
-            f'Ensure path "{archive_path}" points to an unzipped Reddit GDPR archive folder; {filename} not found in the expected spot.'
-        )
-
-    saved_ids = {row["id"] for row in db[item_type].rows}
-
-    with open(file) as comment_archive_rows:
-        return [
-            f't1_{c["id"]}'
-            for c in DictReader(comment_archive_rows)
-            if c["id"] not in saved_ids
-        ]
+def add_user_fragment(items: list[T], username: str, user_id: str) -> list[T]:
+    return [
+        cast(T, {**i, "author": username, "author_fullname": f"t2_{user_id}"})
+        for i in items
+    ]
 
 
 @cli.command()
@@ -117,13 +105,50 @@ def load_ids_from_file(
     help=DB_PATH_HELP,
 )
 def archive(archive_path: Path, db_path: str):
-    # TODO: add text
+    click.echo(f"loading data found in archive at {archive_path} into {db_path}")
+
     db = Database(db_path)
 
     comment_ids = load_ids_from_file(db, archive_path, "comments")
+    click.echo("\nFetching info about comments")
     comments = cast(list[Comment], load_info(comment_ids))
-    num_written = save_comments(db, comments)
 
     post_ids = load_ids_from_file(db, archive_path, "posts")
+    click.echo("\nFetching info about posts")
     posts = cast(list[Post], load_info(post_ids))
-    num_written = save_posts(db, posts)
+
+    obj_with_username = find_object_with_username(
+        comments
+    ) or find_object_with_username(posts)
+    if not obj_with_username:
+        username = get_username_from_archive(archive_path)
+        if username:
+            user_id = get_user_id(username)
+            comments = add_user_fragment(comments, username, user_id)
+            posts = add_user_fragment(posts, username, user_id)
+        else:
+            click.echo(
+                "\nUnable to guess username from content or archive; some posts will not be saved.",
+                err=True,
+            )
+
+    num_comments_written = save_comments(db, comments)
+    num_posts_written = save_posts(db, posts)
+    ensure_fts(db)
+
+    messages = [
+        "\nDone!",
+        f" - saved {num_comments_written} new comments",
+        f" - saved {num_posts_written} new posts",
+    ]
+
+    if missing_comments := len(comment_ids) - num_comments_written:
+        messages.append(
+            f" - failed to find {missing_comments} missing comments; ignored for now"
+        )
+    if missing_posts := len(post_ids) - num_posts_written:
+        messages.append(
+            f" - failed to find {missing_posts} missing posts; ignored for now"
+        )
+
+    click.echo("\n".join(messages))

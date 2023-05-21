@@ -42,19 +42,21 @@ class UserRow(TypedDict):
     username: str
 
 
-def comment_to_user_row(comment: UserFragment) -> UserRow:
-    return {"id": comment["author_fullname"][3:], "username": comment["author"]}
+def comment_to_user_row(user: UserFragment) -> dict[str, str] | None:
+    if "author_fullname" in user:
+        return {"id": user["author_fullname"][3:], "username": user["author"]}
 
 
 def insert_user(db: Database, user: UserFragment):
-    db["users"].insert(  # type: ignore
-        cast(dict[str, Any], comment_to_user_row(user)),
-        # ignore any write error
-        ignore=True,
-        # only relevant if creating the table
-        pk="id",  # type: ignore
-        not_null=["id", "username"],
-    )
+    if user_row := comment_to_user_row(user):
+        db["users"].insert(  # type: ignore
+            user_row,
+            # ignore any write error
+            ignore=True,
+            # only relevant if creating the table
+            pk="id",  # type: ignore
+            not_null=["id", "username"],
+        )
 
 
 class CommentRow(TypedDict):

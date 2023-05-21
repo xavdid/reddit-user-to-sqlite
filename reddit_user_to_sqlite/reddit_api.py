@@ -1,6 +1,5 @@
 from typing import (
     Any,
-    Iterable,
     Literal,
     NotRequired,
     Optional,
@@ -133,17 +132,21 @@ class ErorrResponse(TypedDict):
 PAGE_SIZE = 100
 
 
-def _call_reddit_api(url: str, params: dict[str, Any] | None = None):
-    response: SuccessResponse | ErorrResponse = requests.get(
+def _raise_reddit_error(response):
+    if "error" in response:
+        raise ValueError(
+            f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
+        )
+
+
+def _call_reddit_api(url: str, params: dict[str, Any] | None = None) -> SuccessResponse:
+    response = requests.get(
         url,
         {"limit": PAGE_SIZE, "raw_json": 1, **(params or {})},
         headers={"user-agent": USER_AGENT},
     ).json()
 
-    if "error" in response:
-        raise ValueError(
-            f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
-        )
+    _raise_reddit_error(response)
 
     return response
 
@@ -177,10 +180,6 @@ def load_posts_for_user(username: str) -> list[Post]:
 def load_info(resources: Sequence[str]) -> list[Comment | Post | Subreddit]:
     result = []
 
-    # reddit API fails silently if more than 100 ids are passed
-    # if (l := len(resources)) >= 100:
-    #     raise ValueError(f"You can load max 100 items at a time, got {l}")
-
     for batch in batched(tqdm(resources), PAGE_SIZE):
         response = _call_reddit_api(
             "https://www.reddit.com/api/info.json", params={"id": ",".join(batch)}
@@ -188,3 +187,14 @@ def load_info(resources: Sequence[str]) -> list[Comment | Post | Subreddit]:
         result += [c["data"] for c in response["data"]["children"]]
 
     return result
+
+
+def get_user_id(username: str) -> str:
+    response = requests.get(
+        f"https://www.reddit.com/user/{username}/about.json",
+        headers={"user-agent": USER_AGENT},
+    ).json()
+
+    _raise_reddit_error(response)
+
+    return response["data"]["id"]

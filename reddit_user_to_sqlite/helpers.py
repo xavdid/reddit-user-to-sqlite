@@ -1,6 +1,7 @@
 import re
 from itertools import islice
-from typing import Iterable, TypeVar
+from typing import Iterable, TypeVar, TYPE_CHECKING
+
 
 T = TypeVar("T")
 
@@ -24,3 +25,10 @@ def clean_username(username: str) -> str:
     if re.match(r"/?u/", username):
         return username.strip().strip("/u")
     return username
+
+
+def find_object_with_username(items):
+    try:
+        return next(c for c in items if "author_fullname" in c)
+    except StopIteration:
+        pass
