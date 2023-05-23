@@ -4,30 +4,33 @@ import pytest
 
 from reddit_user_to_sqlite.reddit_api import (
     SuccessResponse,
+    _raise_reddit_error,
+    get_user_id,
     load_comments_for_user,
+    load_info,
     load_posts_for_user,
 )
-from tests.conftest import MockFunc
+from tests.conftest import MockInfoFunc, MockPagedFunc, MockUserFunc
 
 
-def test_load_comments(mock_request: MockFunc, comment_response, comment):
-    response = mock_request(resource="comments", json=comment_response)
+def test_load_comments(mock_paged_request: MockPagedFunc, comment_response, comment):
+    response = mock_paged_request(resource="comments", json=comment_response)
 
     assert load_comments_for_user("xavdid") == [comment]
 
     assert response.call_count == 1
 
 
-def test_load_posts(mock_request: MockFunc, self_post_response, self_post):
-    response = mock_request(resource="submitted", json=self_post_response)
+def test_load_posts(mock_paged_request: MockPagedFunc, self_post_response, self_post):
+    response = mock_paged_request(resource="submitted", json=self_post_response)
 
     assert load_posts_for_user("xavdid") == [self_post]
     assert response.call_count == 1
 
 
 @patch("reddit_user_to_sqlite.reddit_api.PAGE_SIZE", new=1)
-def test_loads_10_pages(mock_request: MockFunc, comment_response, comment):
-    response = mock_request(
+def test_loads_10_pages(mock_paged_request: MockPagedFunc, comment_response, comment):
+    response = mock_paged_request(
         resource="comments", params={"limit": 1}, json=comment_response
     )
 
@@ -38,20 +41,20 @@ def test_loads_10_pages(mock_request: MockFunc, comment_response, comment):
 
 @patch("reddit_user_to_sqlite.reddit_api.PAGE_SIZE", new=1)
 def test_loads_multiple_pages(
-    mock_request: MockFunc, comment_response: SuccessResponse, comment
+    mock_paged_request: MockPagedFunc, comment_response: SuccessResponse, comment
 ):
     comment_response["data"]["after"] = "abc"
-    first_request = mock_request(
+    first_request = mock_paged_request(
         resource="comments", params={"limit": 1}, json=comment_response
     )
 
     comment_response["data"]["after"] = "def"
-    second_request = mock_request(
+    second_request = mock_paged_request(
         resource="comments", params={"limit": 1, "after": "abc"}, json=comment_response
     )
 
     comment_response["data"]["children"] = []
-    third_request = mock_request(
+    third_request = mock_paged_request(
         resource="comments", params={"limit": 1, "after": "def"}, json=comment_response
     )
 
@@ -64,8 +67,8 @@ def test_loads_multiple_pages(
     assert comments == [comment, comment]
 
 
-def test_error_response(mock_request: MockFunc):
-    mock_request(
+def test_error_response(mock_paged_request: MockPagedFunc):
+    mock_paged_request(
         resource="comments", json={"error": 500, "message": "you broke reddit"}
     )
 
@@ -75,3 +78,45 @@ def test_error_response(mock_request: MockFunc):
     assert (
         str(err.value) == "Received API error from Reddit (code 500): you broke reddit"
     )
+
+
+def test_load_info(mock_info_request: MockInfoFunc, comment_response, comment):
+    mock_info_request("a,b,c", json=comment_response)
+
+    assert load_info(["a", "b", "c"]) == [comment]
+
+
+@patch("reddit_user_to_sqlite.reddit_api.PAGE_SIZE", new=2)
+def test_load_info_pages(mock_info_request: MockInfoFunc, comment_response, comment):
+    mock_info_request("a,b", json=comment_response, limit=2)
+    mock_info_request("c,d", json=comment_response, limit=2)
+    mock_info_request("e", json=comment_response, limit=2)
+
+    assert load_info(["a", "b", "c", "d", "e"]) == [comment] * 3
+
+
+def test_load_info_empty(mock_info_request: MockInfoFunc, empty_response):
+    mock_info_request("a,b,c,d,e,f,g,h", json=empty_response)
+
+    assert load_info(["a", "b", "c", "d", "e", "f", "g", "h"]) == []
+
+
+def test_raise_reddit_error():
+    assert _raise_reddit_error({}) == None  # no raise, no return
+
+    with pytest.raises(ValueError) as err:
+        _raise_reddit_error({"error": 123, "message": "cool"})
+
+    assert str(err.value) == "Received API error from Reddit (code 123): cool"
+
+
+def test_get_user_id(mock_user_request: MockUserFunc, user_response):
+    mock_user_request("xavdid", json=user_response)
+
+    assert get_user_id("xavdid") == "np8mb41h"
+
+
+def test_get_user_id_unknown_user(mock_user_request: MockUserFunc):
+    mock_user_request("xavdid", json={"message": "Not Found", "error": 404})
+    with pytest.raises(ValueError):
+        get_user_id("xavdid")

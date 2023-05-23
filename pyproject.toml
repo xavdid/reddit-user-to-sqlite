@@ -1,6 +1,6 @@
 [project]
 name = "reddit-user-to-sqlite"
-version = "0.2.0"
+version = "0.3.0"
 
 authors = [{ name = "David Brownman", email = "beamneocube@gmail.com" }]
 description = "Create a SQLite database containing data pulled from Reddit about a single user."
@@ -19,7 +19,7 @@ classifiers = [
 keywords = ["sqlite", "reddit", "dogsheep"]
 
 dependencies = [
-  "sqlite-utils==3.30",
+  "sqlite-utils==3.32.1",
   "click==8.1.3",
   "requests==2.29.0",
   "tqdm==4.65.0",

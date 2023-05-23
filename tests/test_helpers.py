@@ -1,6 +1,6 @@
 import pytest
 
-from reddit_user_to_sqlite.helpers import clean_username
+from reddit_user_to_sqlite.helpers import clean_username, find_user_details_from_items
 
 
 @pytest.mark.parametrize(
@@ -24,3 +24,16 @@ def test_fixture_modifications(self_post, removed_post):
 def test_unique_fixture_ids(self_post, removed_post, external_post):
     # all post types should have unique ids
     assert len({p["id"] for p in [self_post, removed_post, external_post]}) == 3
+
+
+def test_find_user_details_from_items():
+    assert find_user_details_from_items(
+        [
+            {"asdf": 1},
+            {"author_fullname": "t2_abc123", "author": "xavdid"},
+        ]
+    ) == ("xavdid", "t2_abc123")
+
+
+def test_fail_to_find_user_details_from_items():
+    assert find_user_details_from_items([{"asdf": 1}, {"author": "xavdid"}]) == None

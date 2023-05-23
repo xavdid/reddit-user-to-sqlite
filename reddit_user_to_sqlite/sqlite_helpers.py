@@ -1,4 +1,4 @@
-from typing import Any, Sequence, TypedDict, cast
+from typing import Callable, Iterable, TypedDict, TypeVar
 
 from sqlite_utils import Database
 
@@ -14,20 +14,23 @@ class SubredditRow(TypedDict):
     id: str
     name: str
     type: str
+    # TODO: handle archiving and updating
+    # archives_posts: bool
 
 
-def comment_to_subreddit_row(comment: SubredditFragment) -> SubredditRow:
+def item_to_subreddit_row(item: SubredditFragment) -> SubredditRow:
     return {
-        "id": comment["subreddit_id"][3:],
-        "name": comment["subreddit"],
-        "type": comment["subreddit_type"],
+        "id": item["subreddit_id"][3:],
+        "name": item["subreddit"],
+        "type": item["subreddit_type"],
     }
 
 
-def insert_subreddits(db: Database, subreddits: Sequence[SubredditFragment]):
-    db["subreddits"].insert_all(  # type: ignore
-        map(comment_to_subreddit_row, subreddits),
-        ignore=True,  # type: ignore
+def insert_subreddits(db: Database, subreddits: Iterable[SubredditFragment]):
+    # https://github.com/simonw/sqlite-utils/issues/554
+    db["subreddits"].upsert_all(  # type: ignore
+        map(item_to_subreddit_row, subreddits),
+        # ignore=True,  # type: ignore
         # only relevant if creating the table
         pk="id",  # type: ignore
         not_null=["id", "name"],  # type: ignore
@@ -39,19 +42,23 @@ class UserRow(TypedDict):
     username: str
 
 
-def comment_to_user_row(comment: UserFragment) -> UserRow:
-    return {"id": comment["author_fullname"][3:], "username": comment["author"]}
+def item_to_user_row(item: UserFragment) -> dict[str, str] | None:
+    if "author_fullname" in item:
+        return {"id": item["author_fullname"][3:], "username": item["author"]}
 
 
 def insert_user(db: Database, user: UserFragment):
-    db["users"].insert(  # type: ignore
-        cast(dict[str, Any], comment_to_user_row(user)),
-        # ignore any write error
-        ignore=True,
-        # only relevant if creating the table
-        pk="id",  # type: ignore
-        not_null=["id", "username"],
-    )
+    if user_row := item_to_user_row(user):
+        # don't really want to upsert, but I get errors from sqlite when I `insert` after an insert_all
+        # https://github.com/simonw/sqlite-utils/issues/554
+        db["users"].upsert(  # type: ignore
+            user_row,
+            # ignore any write error
+            # ignore=True,
+            # only relevant if creating the table
+            pk="id",  # type: ignore
+            not_null=["id", "username"],  # type: ignore
+        )
 
 
 class CommentRow(TypedDict):
@@ -66,7 +73,10 @@ class CommentRow(TypedDict):
     controversiality: int
 
 
-def comment_to_comment_row(comment: Comment) -> CommentRow:
+def comment_to_comment_row(comment: Comment) -> CommentRow | None:
+    if "author_fullname" not in comment:
+        return
+
     return {
         "id": comment["id"],
         "timestamp": int(comment["created"]),
@@ -80,10 +90,18 @@ def comment_to_comment_row(comment: Comment) -> CommentRow:
     }
 
 
-def upsert_comments(db: Database, comments: list[Comment]):
-    db["comments"].insert_all(  # type: ignore
-        map(comment_to_comment_row, comments),
-        upsert=True,
+T = TypeVar("T")
+U = TypeVar("U")
+
+
+def apply_and_filter(filterer: Callable[[T], U | None], items: Iterable[T]) -> list[U]:
+    return [c for c in map(filterer, items) if c]
+
+
+def upsert_comments(db: Database, comments: Iterable[Comment]) -> int:
+    comment_rows = apply_and_filter(comment_to_comment_row, comments)
+    db["comments"].upsert_all(  # type: ignore
+        comment_rows,
         pk="id",  # type: ignore
         # update the schema - needed if user does archive first
         alter=True,  # type: ignore
@@ -103,6 +121,7 @@ def upsert_comments(db: Database, comments: list[Comment]):
         # see: https://github.com/simonw/sqlite-utils/issues/538
         # not_null=["id", "timestamp", "text", "user", "subreddit", "permalink"],
     )
+    return len(comment_rows)
 
 
 class PostRow(TypedDict):
@@ -122,7 +141,10 @@ class PostRow(TypedDict):
     is_removed: int
 
 
-def post_to_post_row(post: Post) -> PostRow:
+def post_to_post_row(post: Post) -> PostRow | None:
+    if "author_fullname" not in post:
+        return
+
     return {
         "id": post["id"],
         "timestamp": int(post["created"]),
@@ -141,9 +163,10 @@ def post_to_post_row(post: Post) -> PostRow:
     }
 
 
-def upsert_posts(db: Database, posts: list[Post]):
+def upsert_posts(db: Database, posts: Iterable[Post]) -> int:
+    post_rows = apply_and_filter(post_to_post_row, posts)
     db["posts"].insert_all(  # type: ignore
-        map(post_to_post_row, posts),
+        post_rows,
         upsert=True,
         pk="id",  # type: ignore
         alter=True,  # type: ignore
@@ -160,6 +183,7 @@ def upsert_posts(db: Database, posts: list[Post]):
             ),
         ],
     )
+    return len(post_rows)
 
 
 def ensure_fts(db: Database):

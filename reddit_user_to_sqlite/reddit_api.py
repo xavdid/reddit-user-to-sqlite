@@ -1,7 +1,9 @@
-from typing import Literal, Optional, Sequence, TypedDict, final
+from typing import Any, Literal, NotRequired, Optional, Sequence, TypedDict, final
 
 import requests
-from tqdm import tqdm
+from tqdm import tqdm, trange
+
+from reddit_user_to_sqlite.helpers import batched
 
 USER_AGENT = "reddit-to-sqlite"
 
@@ -20,7 +22,7 @@ class UserFragment(TypedDict):
     # comment author username
     author: str
     # comment author prefixed id
-    author_fullname: str
+    author_fullname: NotRequired[str]
 
 
 class Comment(SubredditFragment, UserFragment):
@@ -86,6 +88,10 @@ class Post(SubredditFragment, UserFragment):
     created: float
 
 
+# class Subreddit(TypedDict):
+#     should_archive_posts: bool
+
+
 @final
 class ResourceWrapper(TypedDict):
     kind: str
@@ -118,22 +124,34 @@ class ErorrResponse(TypedDict):
 PAGE_SIZE = 100
 
 
+def _raise_reddit_error(response):
+    if "error" in response:
+        raise ValueError(
+            f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
+        )
+
+
+def _call_reddit_api(url: str, params: dict[str, Any] | None = None) -> SuccessResponse:
+    response = requests.get(
+        url,
+        {"limit": PAGE_SIZE, "raw_json": 1, **(params or {})},
+        headers={"user-agent": USER_AGENT},
+    ).json()
+
+    _raise_reddit_error(response)
+
+    return response
+
+
 def _load_paged_resource(resource: Literal["comments", "submitted"], username: str):
     result = []
     after = None
     # max number of pages we can fetch
-    for _ in tqdm(range(10)):
-        response: SuccessResponse | ErorrResponse = requests.get(
+    for _ in trange(10):
+        response = _call_reddit_api(
             f"https://www.reddit.com/user/{username}/{resource}.json",
-            {"limit": PAGE_SIZE, "raw_json": 1, "after": after},
-            headers={"user-agent": USER_AGENT},
-        ).json()
-
-        if "error" in response:
-            raise ValueError(
-                f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
-            )
-
+            params={"after": after},
+        )
         result += [c["data"] for c in response["data"]["children"]]
         after = response["data"]["after"]
 
@@ -149,3 +167,26 @@ def load_comments_for_user(username: str) -> list[Comment]:
 
 def load_posts_for_user(username: str) -> list[Post]:
     return _load_paged_resource("submitted", username)
+
+
+def load_info(resources: Sequence[str]) -> list[Comment | Post]:
+    result = []
+
+    for batch in batched(tqdm(resources), PAGE_SIZE):
+        response = _call_reddit_api(
+            "https://www.reddit.com/api/info.json", params={"id": ",".join(batch)}
+        )
+        result += [c["data"] for c in response["data"]["children"]]
+
+    return result
+
+
+def get_user_id(username: str) -> str:
+    response = requests.get(
+        f"https://www.reddit.com/user/{username}/about.json",
+        headers={"user-agent": USER_AGENT},
+    ).json()
+
+    _raise_reddit_error(response)
+
+    return response["data"]["id"]
