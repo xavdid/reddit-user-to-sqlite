@@ -4,7 +4,7 @@ from click.testing import CliRunner
 import responses
 from sqlite_utils import Database
 
-from reddit_user_to_sqlite.cli import add_user_fragment, cli
+from reddit_user_to_sqlite.cli import add_missing_user_fragment, cli
 from tests.conftest import (
     MockInfoFunc,
     MockPagedFunc,
@@ -22,14 +22,18 @@ def test_load_data_for_user(
     tmp_db: Database,
     mock_paged_request: MockPagedFunc,
     username,
-    comment_response,
+    comment,
     all_posts_response,
     stored_comment,
     stored_self_post,
     stored_external_post,
     # stored_removed_post,
+    stored_user,
+    removed_comment,
 ):
-    comment_response = mock_paged_request(resource="comments", json=comment_response)
+    comment_response = mock_paged_request(
+        resource="comments", json=_wrap_response(comment, removed_comment)
+    )
     post_response = mock_paged_request(resource="submitted", json=all_posts_response)
 
     result = CliRunner().invoke(cli, ["user", username, "--db", tmp_db_path])
@@ -46,10 +50,11 @@ def test_load_data_for_user(
 
     assert list(tmp_db["subreddits"].rows) == [
         {"id": "2t3ad", "name": "patientgamers", "type": "public"},
+        {"id": "2qm4e", "name": "askscience", "type": "public"},
         {"id": "32u6q", "name": "KeybaseProofs", "type": "public"},
         {"id": "2qh1e", "name": "videos", "type": "public"},
     ]
-    assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
+    assert list(tmp_db["users"].rows) == [stored_user]
     assert list(tmp_db["comments"].rows) == [stored_comment]
     assert list(tmp_db["posts"].rows) == [
         stored_self_post,
@@ -63,7 +68,7 @@ def test_load_data_for_user(
 
 @pytest.mark.live
 def test_load_live_data(
-    tmp_db_path: str, tmp_db: Database, stored_comment, stored_self_post
+    tmp_db_path: str, tmp_db: Database, stored_comment, stored_self_post, stored_user
 ):
     result = CliRunner().invoke(cli, ["user", "xavdid", "--db", tmp_db_path])
     assert not result.exception, result.exception
@@ -75,7 +80,7 @@ def test_load_live_data(
     assert {"id": "2t3ad", "name": "patientgamers", "type": "public"} in list(
         tmp_db["subreddits"].rows
     )
-    assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
+    assert list(tmp_db["users"].rows) == [stored_user]
 
     comments = list(tmp_db["comments"].rows)
     assert (
@@ -121,6 +126,7 @@ def test_comments_but_no_posts(
     empty_response,
     comment_response,
     stored_comment,
+    stored_user,
 ):
     mock_paged_request(resource="comments", json=comment_response)
     mock_paged_request(resource="submitted", json=empty_response)
@@ -128,7 +134,7 @@ def test_comments_but_no_posts(
     result = CliRunner().invoke(cli, ["user", "xavdid", "--db", tmp_db_path])
     assert not result.exception, result.exception
 
-    assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
+    assert list(tmp_db["users"].rows) == [stored_user]
     assert list(tmp_db["posts"].rows) == []
     assert list(tmp_db["comments"].rows) == [stored_comment]
 
@@ -140,6 +146,7 @@ def test_posts_but_no_comments(
     empty_response,
     self_post_response,
     stored_self_post,
+    stored_user,
 ):
     mock_paged_request(resource="comments", json=empty_response)
     mock_paged_request(resource="submitted", json=self_post_response)
@@ -147,17 +154,26 @@ def test_posts_but_no_comments(
     result = CliRunner().invoke(cli, ["user", "xavdid", "--db", tmp_db_path])
     assert not result.exception, result.exception
 
-    assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
+    assert list(tmp_db["users"].rows) == [stored_user]
     assert list(tmp_db["comments"].rows) == []
     assert list(tmp_db["posts"].rows) == [stored_self_post]
 
 
-def test_add_user_fragment():
+def test_add_missing_user_fragment():
     items = [{"a": 1}, {"a": 2}, {"a": 3}]
-    assert add_user_fragment(items, "xavdid", "abc123") == [  # type: ignore
+    assert add_missing_user_fragment(items, "xavdid", "t2_abc123") == [  # type: ignore
         {"a": 1, "author": "xavdid", "author_fullname": "t2_abc123"},
         {"a": 2, "author": "xavdid", "author_fullname": "t2_abc123"},
         {"a": 3, "author": "xavdid", "author_fullname": "t2_abc123"},
+    ]
+
+
+def test_add_missing_user_fragment_no_overwrite():
+    items = [{"a": 1}, {"author": "david", "author_fullname": "t2_def456"}]
+
+    assert add_missing_user_fragment(items, "xavdid", "t2_abc123") == [  # type: ignore
+        {"a": 1, "author": "xavdid", "author_fullname": "t2_abc123"},
+        {"author": "david", "author_fullname": "t2_def456"},
     ]
 
 
@@ -168,6 +184,7 @@ def test_cold_load_data_from_archive(
     modify_post,
     archive_dir,
     tmp_db: Database,
+    stored_user,
     stored_comment,
     stored_self_post,
     # needed for side effects
@@ -199,7 +216,7 @@ def test_cold_load_data_from_archive(
         {"id": "2t3ad", "name": "patientgamers", "type": "public"},
         {"id": "32u6q", "name": "KeybaseProofs", "type": "public"},
     ]
-    assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
+    assert list(tmp_db["users"].rows) == [stored_user]
     assert list(tmp_db["comments"].rows) == [{**stored_comment, "id": i} for i in "abc"]
     assert list(tmp_db["posts"].rows) == [{**stored_self_post, "id": i} for i in "def"]
 
@@ -212,6 +229,7 @@ def test_cold_load_comments_only_from_archive(
     archive_dir,
     tmp_db: Database,
     stored_comment,
+    stored_user,
     # needed for side effects
     comments_file,
 ):
@@ -230,7 +248,7 @@ def test_cold_load_comments_only_from_archive(
     assert list(tmp_db["subreddits"].rows) == [
         {"id": "2t3ad", "name": "patientgamers", "type": "public"}
     ]
-    assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
+    assert list(tmp_db["users"].rows) == [stored_user]
     assert list(tmp_db["comments"].rows) == [{**stored_comment, "id": i} for i in "abc"]
     assert list(tmp_db["posts"].rows) == []
 
@@ -243,6 +261,7 @@ def test_cold_load_posts_only_from_archive(
     archive_dir,
     tmp_db: Database,
     stored_self_post,
+    stored_user,
     # needed for side effects
     posts_file,
 ):
@@ -259,7 +278,7 @@ def test_cold_load_posts_only_from_archive(
     assert list(tmp_db["subreddits"].rows) == [
         {"id": "32u6q", "name": "KeybaseProofs", "type": "public"}
     ]
-    assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
+    assert list(tmp_db["users"].rows) == [stored_user]
     assert list(tmp_db["comments"].rows) == []
     assert list(tmp_db["posts"].rows) == [{**stored_self_post, "id": i} for i in "def"]
 
@@ -276,6 +295,7 @@ def test_loads_data_from_both_sources_api_first(
     tmp_db: Database,
     stored_comment,
     stored_self_post,
+    stored_user,
 ):
     # have to do everything in a single mock;
     # might be able to turn that into a fixture so this plays more nicely, but this works
@@ -325,7 +345,7 @@ def test_loads_data_from_both_sources_api_first(
         )
         assert not archive_result.exception, print(archive_result.exception)
 
-        assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
+        assert list(tmp_db["users"].rows) == [stored_user]
         assert list(tmp_db["comments"].rows) == [
             stored_comment,
             *({**stored_comment, "id": i} for i in "ac"),
@@ -348,6 +368,7 @@ def test_loads_data_from_both_sources_archive_first(
     tmp_db: Database,
     stored_comment,
     stored_self_post,
+    stored_user,
 ):
     # have to do everything in a single mock;
     # might be able to turn that into a fixture so this plays more nicely, but this works
@@ -382,7 +403,7 @@ def test_loads_data_from_both_sources_archive_first(
             "posts_fts",
         } <= set(tmp_db.table_names())
 
-        assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
+        assert list(tmp_db["users"].rows) == [stored_user]
         assert list(tmp_db["comments"].rows) == [
             {**stored_comment, "id": i} for i in "ac"
         ]
@@ -392,6 +413,7 @@ def test_loads_data_from_both_sources_archive_first(
 
         mock_paged_request("comments", json=comment_response)
         mock_paged_request("submitted", json=self_post_response)
+
         api_result = CliRunner().invoke(cli, ["user", "xavdid", "--db", tmp_db_path])
         assert not api_result.exception, print_tb(api_result.exception.__traceback__)
 
@@ -409,6 +431,49 @@ def test_loads_data_from_both_sources_archive_first(
         ]
 
 
+def test_adds_username_to_removed_posts_in_mixed_archive(
+    comment,
+    removed_comment,
+    self_post,
+    removed_post,
+    archive_dir,
+    tmp_db_path,
+    tmp_db: Database,
+    stored_user,
+    stored_comment,
+    stored_removed_comment,
+    stored_self_post,
+    stored_removed_post,
+):
+    with responses.RequestsMock() as mock:
+        mock_info_request = _build_mock_info_req(mock)
+
+        mock_info_request(
+            "t1_jj0ti6f,t1_c3sgfl4", json=_wrap_response(comment, removed_comment)
+        )
+        mock_info_request(
+            "t3_uypaav,t3_1f55rr", json=_wrap_response(self_post, removed_post)
+        )
+
+        _build_test_file(archive_dir, "comments.csv", ["id", "jj0ti6f", "c3sgfl4"])
+        _build_test_file(archive_dir, "posts.csv", ["id", "uypaav", "1f55rr"])
+
+        api_result = CliRunner().invoke(
+            cli, ["archive", str(archive_dir), "--db", tmp_db_path]
+        )
+        assert not api_result.exception, print(api_result.exception)
+
+        assert list(tmp_db["subreddits"].rows) == [
+            {"id": "2t3ad", "name": "patientgamers", "type": "public"},
+            {"id": "2qm4e", "name": "askscience", "type": "public"},
+            {"id": "32u6q", "name": "KeybaseProofs", "type": "public"},
+            {"id": "2qh1e", "name": "videos", "type": "public"},
+        ]
+        assert list(tmp_db["users"].rows) == [stored_user]
+        assert list(tmp_db["comments"].rows) == [stored_comment, stored_removed_comment]
+        assert list(tmp_db["posts"].rows) == [stored_self_post, stored_removed_post]
+
+
 def test_load_username_from_file(
     tmp_db: Database,
     tmp_db_path,
@@ -418,6 +483,7 @@ def test_load_username_from_file(
     removed_post_response,
     stored_removed_comment,
     stored_removed_post,
+    stored_user,
     # needed for side effects
     stats_file,
 ):
@@ -451,7 +517,7 @@ def test_load_username_from_file(
             {"id": "2qm4e", "name": "askscience", "type": "public"},
             {"id": "2qh1e", "name": "videos", "type": "public"},
         ]
-        assert list(tmp_db["users"].rows) == [{"id": "np8mb41h", "username": "xavdid"}]
+        assert list(tmp_db["users"].rows) == [stored_user]
         assert list(tmp_db["comments"].rows) == [stored_removed_comment]
         assert list(tmp_db["posts"].rows) == [stored_removed_post]
 

@@ -7,7 +7,7 @@ from responses import BaseResponse, RequestsMock, matchers
 from sqlite_utils import Database
 
 from reddit_user_to_sqlite.reddit_api import USER_AGENT, Post, SuccessResponse
-from reddit_user_to_sqlite.sqlite_helpers import CommentRow, PostRow
+from reddit_user_to_sqlite.sqlite_helpers import CommentRow, PostRow, UserRow
 
 
 @pytest.fixture
@@ -240,6 +240,7 @@ def stored_removed_comment() -> CommentRow:
         "subreddit": "2qm4e",
         "text": "[removed]",
         "timestamp": 1329550785,
+        # manually added this - if it's stored, I must have found a user
         "user": "np8mb41h",
     }
 
@@ -549,6 +550,7 @@ def stored_removed_post() -> PostRow:
         "timestamp": 1369671390,
         "title": "Tommy Wiseau Wishes YOU A Happy Memorial Day! — Urban Outfitters",
         "upvote_ratio": 1.0,
+        # manually added this - if it's stored, I must have found a user
         "user": "np8mb41h",
     }
 
@@ -663,6 +665,11 @@ def mock_info_request() -> Generator[MockInfoFunc, None, None]:
     """
     with responses.RequestsMock() as mock:
         yield _build_mock_info_req(mock)
+
+
+@pytest.fixture
+def stored_user() -> UserRow:
+    return {"id": "np8mb41h", "username": "xavdid"}
 
 
 @pytest.fixture

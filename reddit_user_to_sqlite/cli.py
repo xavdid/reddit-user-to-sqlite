@@ -9,7 +9,7 @@ from reddit_user_to_sqlite.csv_helpers import (
     get_username_from_archive,
     load_ids_from_file,
 )
-from reddit_user_to_sqlite.helpers import clean_username, any_object_has_username
+from reddit_user_to_sqlite.helpers import clean_username, find_user_details_from_items
 from reddit_user_to_sqlite.reddit_api import (
     Comment,
     Post,
@@ -85,9 +85,16 @@ def user(db_path: str, username: str):
     ensure_fts(db)
 
 
-def add_user_fragment(items: list[T], username: str, user_id: str) -> list[T]:
+def add_missing_user_fragment(
+    items: list[T], username: str, user_fullname: str
+) -> list[T]:
+    """
+    If an item lacks user details, this adds them. Otherwise the item passes through untouched.
+    """
     return [
-        cast(T, {**i, "author": username, "author_fullname": f"t2_{user_id}"})
+        cast(T, {**i, "author": username, "author_fullname": user_fullname})
+        if "author_fullname" not in i
+        else i
         for i in items
     ]
 
@@ -117,17 +124,23 @@ def archive(archive_path: Path, db_path: str):
     click.echo("\nFetching info about posts")
     posts = cast(list[Post], load_info(post_ids))
 
-    if not (any_object_has_username(comments) or any_object_has_username(posts)):
-        if username := get_username_from_archive(archive_path):
-            user_id = get_user_id(username)
+    if user_details := (
+        find_user_details_from_items(comments) or find_user_details_from_items(posts)
+    ):
+        username, user_fullname = user_details
 
-            comments = add_user_fragment(comments, username, user_id)
-            posts = add_user_fragment(posts, username, user_id)
-        else:
-            click.echo(
-                "\nUnable to guess username from API content or archive; some posts will not be saved.",
-                err=True,
-            )
+        comments = add_missing_user_fragment(comments, username, user_fullname)
+        posts = add_missing_user_fragment(posts, username, user_fullname)
+    elif username := get_username_from_archive(archive_path):
+        user_fullname = f"t2_{get_user_id(username)}"
+
+        comments = add_missing_user_fragment(comments, username, user_fullname)
+        posts = add_missing_user_fragment(posts, username, user_fullname)
+    else:
+        click.echo(
+            "\nUnable to guess username from API content or archive; some posts will not be saved.",
+            err=True,
+        )
 
     num_comments_written = save_comments(db, comments)
     num_posts_written = save_posts(db, posts)

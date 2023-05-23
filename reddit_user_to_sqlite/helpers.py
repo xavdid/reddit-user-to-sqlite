@@ -27,8 +27,13 @@ def clean_username(username: str) -> str:
     return username
 
 
-def any_object_has_username(items) -> bool:
+def find_user_details_from_items(items) -> tuple[str, str] | None:
+    """
+    Returns a 2-tuple of prefixed user_id and username if found, otherwise None
+    """
     try:
-        return bool(next(c for c in items if "author_fullname" in c))
+        return next(
+            (c["author"], c["author_fullname"]) for c in items if "author_fullname" in c
+        )
     except StopIteration:
-        return False
+        return None
