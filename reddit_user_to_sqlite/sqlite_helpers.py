@@ -50,7 +50,6 @@ def item_to_user_row(item: UserFragment) -> dict[str, str] | None:
 
 def insert_user(db: Database, user: UserFragment):
     if user_row := item_to_user_row(user):
-        print("uu", user_row)
         # don't really want to upsert, but I get errors from sqlite when I `insert` after an insert_all
         # https://github.com/simonw/sqlite-utils/issues/554
         db["users"].upsert(  # type: ignore
