@@ -12,7 +12,7 @@ pipx install reddit-user-to-sqlite
 
 ## Usage
 
-The CLI currently exposes a single command: `user`. An `archive` command is planned.
+The CLI currently exposes two commands: `user` and `archive`. They allow you to archive recent comments/posts from the API or _all_ posts (as read from a CSV file).
 
 ### user
 
@@ -109,22 +109,6 @@ You'll get a nice, formatted output:
 
 ![](https://cdn.zappy.app/5850a782196d1c7a83a054400c0a5dc4.png)
 
-## Development
-
-This section is people making changes to this package.
-
-When in a virtual environment, run the following:
-
-```bash
-pip install -e '.[test]'
-```
-
-This installs the package in `--edit` mode and makes its dependencies available. You can now run `reddit-user-to-sqlite` to invoke the CLI.
-
-### Running Tests
-
-In your virtual environment, a simple `pytest` should run the unit test suite.
-
 ## Motivation
 
 I got nervous when I saw Reddit's [notification of upcoming API changes](https://old.reddit.com/r/reddit/comments/12qwagm/an_update_regarding_reddits_api/). To ensure I could always access data I created, I wanted to make sure I had a backup in place before anything changed in a big way.
@@ -151,6 +135,22 @@ When running the `user` command, yes. It fetches and updates up to 1k each of co
 When running the `archive` command, no. To cut down on API requests, it only fetches data about comments/posts that aren't yet in the database (since the archive may include many items).
 
 Both of these may change in the future to be more in line with [Reddit's per-subreddit archiving guidelines](https://www.reddit.com/r/modnews/comments/py2xy2/voting_commenting_on_archived_posts/).
+
+## Development
+
+This section is people making changes to this package.
+
+When in a virtual environment, run the following:
+
+```bash
+pip install -e '.[test]'
+```
+
+This installs the package in `--edit` mode and makes its dependencies available. You can now run `reddit-user-to-sqlite` to invoke the CLI.
+
+### Running Tests
+
+In your virtual environment, a simple `pytest` should run the unit test suite.
 
 ## Releasing New Versions
 
