@@ -178,6 +178,7 @@ def load_posts_for_user(username: str) -> list[Post]:
 
 
 def load_info(resources: Sequence[str]) -> list[Comment | Post | Subreddit]:
+    print("loading info", resources)
     result = []
 
     for batch in batched(tqdm(resources), PAGE_SIZE):

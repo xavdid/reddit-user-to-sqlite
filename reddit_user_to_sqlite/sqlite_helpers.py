@@ -19,18 +19,19 @@ class SubredditRow(TypedDict):
     # archives_posts: bool
 
 
-def comment_to_subreddit_row(comment: SubredditFragment) -> SubredditRow:
+def item_to_subreddit_row(item: SubredditFragment) -> SubredditRow:
     return {
-        "id": comment["subreddit_id"][3:],
-        "name": comment["subreddit"],
-        "type": comment["subreddit_type"],
+        "id": item["subreddit_id"][3:],
+        "name": item["subreddit"],
+        "type": item["subreddit_type"],
     }
 
 
 def insert_subreddits(db: Database, subreddits: Iterable[SubredditFragment]):
-    db["subreddits"].insert_all(  # type: ignore
-        map(comment_to_subreddit_row, subreddits),
-        ignore=True,  # type: ignore
+    # https://github.com/simonw/sqlite-utils/issues/554
+    db["subreddits"].upsert_all(  # type: ignore
+        map(item_to_subreddit_row, subreddits),
+        # ignore=True,  # type: ignore
         # only relevant if creating the table
         pk="id",  # type: ignore
         not_null=["id", "name"],  # type: ignore
@@ -42,20 +43,23 @@ class UserRow(TypedDict):
     username: str
 
 
-def comment_to_user_row(user: UserFragment) -> dict[str, str] | None:
-    if "author_fullname" in user:
-        return {"id": user["author_fullname"][3:], "username": user["author"]}
+def item_to_user_row(item: UserFragment) -> dict[str, str] | None:
+    if "author_fullname" in item:
+        return {"id": item["author_fullname"][3:], "username": item["author"]}
 
 
 def insert_user(db: Database, user: UserFragment):
-    if user_row := comment_to_user_row(user):
-        db["users"].insert(  # type: ignore
+    if user_row := item_to_user_row(user):
+        print("uu", user_row)
+        # don't really want to upsert, but I get errors from sqlite when I `insert` after an insert_all
+        # https://github.com/simonw/sqlite-utils/issues/554
+        db["users"].upsert(  # type: ignore
             user_row,
             # ignore any write error
-            ignore=True,
+            # ignore=True,
             # only relevant if creating the table
             pk="id",  # type: ignore
-            not_null=["id", "username"],
+            not_null=["id", "username"],  # type: ignore
         )
 
 
@@ -98,9 +102,8 @@ def apply_and_filter(filterer: Callable[[T], U | None], items: Iterable[T]) -> l
 
 def upsert_comments(db: Database, comments: Iterable[Comment]) -> int:
     comment_rows = apply_and_filter(comment_to_comment_row, comments)
-    db["comments"].insert_all(  # type: ignore
+    db["comments"].upsert_all(  # type: ignore
         comment_rows,
-        upsert=True,
         pk="id",  # type: ignore
         # update the schema - needed if user does archive first
         alter=True,  # type: ignore

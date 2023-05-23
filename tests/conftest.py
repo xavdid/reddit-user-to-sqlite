@@ -3,7 +3,7 @@ from typing import Any, Generator, Literal, Optional, Protocol, Sequence
 
 import pytest
 import responses
-from responses import BaseResponse, matchers
+from responses import BaseResponse, RequestsMock, matchers
 from sqlite_utils import Database
 
 from reddit_user_to_sqlite.reddit_api import USER_AGENT, Post, SuccessResponse
@@ -126,6 +126,92 @@ def comment():
 
 
 @pytest.fixture
+def modify_comment(comment):
+    def _modify(d):
+        return {**comment, **d}
+
+    return _modify
+
+
+@pytest.fixture
+def modify_post(self_post):
+    def _modify(d):
+        return {**self_post, **d}
+
+    return _modify
+
+
+@pytest.fixture
+def removed_comment():
+    return {
+        "total_awards_received": 0,
+        "approved_at_utc": None,
+        "author_is_blocked": False,
+        "comment_type": None,
+        "edited": False,
+        "mod_reason_by": None,
+        "banned_by": None,
+        "removal_reason": None,
+        "link_id": "t3_puwue",
+        "author_flair_template_id": None,
+        "likes": None,
+        "replies": "",
+        "user_reports": [],
+        "saved": False,
+        "id": "c3sgfl4",
+        "banned_at_utc": None,
+        "mod_reason_title": None,
+        "gilded": 0,
+        "archived": True,
+        "collapsed_reason_code": "DELETED",
+        "no_follow": True,
+        "author": "[deleted]",
+        "can_mod_post": False,
+        "created_utc": 1329550785.0,
+        "send_replies": True,
+        "parent_id": "t1_c3sgeij",
+        "score": -1,
+        "approved_by": None,
+        "mod_note": None,
+        "all_awardings": [],
+        "subreddit_id": "t5_2qm4e",
+        "body": "[removed]",
+        "awarders": [],
+        "author_flair_css_class": None,
+        "name": "t1_c3sgfl4",
+        "downs": 0,
+        "is_submitter": False,
+        "body_html": '<div class="md"><p>[removed]</p>\n</div>',
+        "gildings": {},
+        "collapsed_reason": None,
+        "distinguished": None,
+        "associated_award": None,
+        "stickied": False,
+        "can_gild": True,
+        "top_awarded_type": None,
+        "unrepliable_reason": None,
+        "author_flair_text_color": "dark",
+        "score_hidden": False,
+        "permalink": "/r/askscience/comments/asdf/why_do_birds_fly/",
+        "num_reports": None,
+        "locked": False,
+        "report_reasons": None,
+        "created": 1329550785.0,
+        "subreddit": "askscience",
+        "author_flair_text": None,
+        "treatment_tags": [],
+        "collapsed": True,
+        "subreddit_name_prefixed": "r/askscience",
+        "controversiality": 0,
+        "author_flair_background_color": "",
+        "collapsed_because_crowd_control": None,
+        "mod_reports": [],
+        "subreddit_type": "public",
+        "ups": -1,
+    }
+
+
+@pytest.fixture
 def stored_comment() -> CommentRow:
     """
     a serialized comment row in the db
@@ -139,6 +225,21 @@ def stored_comment() -> CommentRow:
         "subreddit": "2t3ad",
         "text": "Such a great game to pick up for a run every couple of months. Every time I think I'm done, it pulls be back in.",
         "timestamp": 1683327131,
+        "user": "np8mb41h",
+    }
+
+
+@pytest.fixture
+def stored_removed_comment() -> CommentRow:
+    return {
+        "controversiality": 0,
+        "id": "c3sgfl4",
+        "is_submitter": 0,
+        "permalink": "https://old.reddit.com/r/askscience/comments/asdf/why_do_birds_fly/?context=10",
+        "score": -1,
+        "subreddit": "2qm4e",
+        "text": "[removed]",
+        "timestamp": 1329550785,
         "user": "np8mb41h",
     }
 
@@ -323,24 +424,132 @@ def self_post_response(self_post):
 
 
 @pytest.fixture
-def removed_post(self_post: Post) -> Post:
+def removed_post():
     """
     A raw (unwrapped) removed post object from the Reddit API
     """
     return {
-        **self_post,
-        "selftext": "[removed]",
-        "id": "asdf",
+        "approved_at_utc": None,
+        "subreddit": "videos",
+        "selftext": "[deleted]",
+        "user_reports": [],
+        "saved": False,
+        "mod_reason_title": None,
+        "gilded": 0,
+        "clicked": False,
+        "title": "Tommy Wiseau Wishes YOU A Happy Memorial Day! — Urban Outfitters",
+        "link_flair_richtext": [],
+        "subreddit_name_prefixed": "r/videos",
+        "hidden": False,
+        "pwls": 6,
+        "link_flair_css_class": None,
+        "downs": 0,
+        "thumbnail_height": 52,
+        "top_awarded_type": None,
+        "hide_score": False,
+        "name": "t3_1f55rr",
+        "quarantine": False,
+        "link_flair_text_color": "dark",
+        "upvote_ratio": 1.0,
+        "author_flair_background_color": "",
+        "subreddit_type": "public",
+        "ups": 1,
+        "total_awards_received": 0,
+        "media_embed": {},
+        "thumbnail_width": 70,
+        "author_flair_template_id": None,
+        "is_original_content": False,
+        "secure_media": None,
+        "is_reddit_media_domain": False,
+        "is_meta": False,
+        "category": None,
+        "secure_media_embed": {},
+        "link_flair_text": None,
+        "can_mod_post": False,
+        "score": 1,
+        "approved_by": None,
+        "is_created_from_ads_ui": False,
+        "thumbnail": "default",
+        "edited": False,
+        "author_flair_css_class": None,
+        "gildings": {},
+        "content_categories": None,
+        "is_self": False,
+        "mod_note": None,
+        "created": 1369671390.0,
+        "link_flair_type": "text",
+        "wls": 6,
+        "removed_by_category": None,
+        "banned_by": None,
+        "domain": "",
+        "allow_live_comments": False,
+        "selftext_html": '<!-- SC_OFF --><div class="md"><p>[deleted]</p>\n</div><!-- SC_ON -->',
+        "likes": None,
+        "suggested_sort": None,
+        "banned_at_utc": None,
+        "url_overridden_by_dest": "",
+        "view_count": None,
+        "archived": False,
+        "no_follow": True,
+        "is_crosspostable": False,
+        "pinned": False,
+        "over_18": False,
+        "all_awardings": [],
+        "awarders": [],
+        "media_only": False,
+        "can_gild": False,
+        "spoiler": False,
+        "locked": False,
+        "author_flair_text": None,
+        "treatment_tags": [],
+        "visited": False,
+        "removed_by": None,
+        "num_reports": None,
+        "distinguished": None,
+        "subreddit_id": "t5_2qh1e",
+        "author_is_blocked": False,
+        "mod_reason_by": None,
+        "removal_reason": None,
+        "link_flair_background_color": "",
+        "id": "1f55rr",
+        "is_robot_indexable": False,
+        "report_reasons": None,
+        "author": "[deleted]",
+        "discussion_type": None,
+        "num_comments": 0,
+        "send_replies": False,
+        "whitelist_status": "all_ads",
+        "contest_mode": False,
+        "mod_reports": [],
+        "author_flair_text_color": "dark",
+        "permalink": "/r/videos/comments/1f55rr/tommy_wiseau_wishes_you_a_happy_memorial_day/",
+        "parent_whitelist_status": "all_ads",
+        "stickied": False,
+        "url": "",
+        "subreddit_subscribers": 26688085,
+        "created_utc": 1369671390.0,
+        "num_crossposts": 0,
+        "media": None,
+        "is_video": False,
     }
 
 
 @pytest.fixture
-def stored_removed_post(stored_self_post: PostRow) -> PostRow:
+def stored_removed_post() -> PostRow:
     return {
-        **stored_self_post,
-        "text": "[removed]",
-        "is_removed": 1,
-        "id": "asdf",
+        "external_url": "",
+        "id": "1f55rr",
+        "is_removed": 0,
+        "num_awards": 0,
+        "num_comments": 0,
+        "permalink": "https://old.reddit.com/r/videos/comments/1f55rr/tommy_wiseau_wishes_you_a_happy_memorial_day/",
+        "score": 1,
+        "subreddit": "2qh1e",
+        "text": "[deleted]",
+        "timestamp": 1369671390,
+        "title": "Tommy Wiseau Wishes YOU A Happy Memorial Day! — Urban Outfitters",
+        "upvote_ratio": 1.0,
+        "user": "np8mb41h",
     }
 
 
@@ -392,35 +601,59 @@ class MockPagedFunc(Protocol):
         ...
 
 
+def _build_mock_paged_req(mock: RequestsMock) -> MockPagedFunc:
+    def _mock_request(
+        resource: Literal["comments", "submitted"],
+        json: Any,
+        params: Optional[dict[str, str | int]] = None,
+    ):
+        params = {"limit": 100, "raw_json": 1, **(params or {})}
+
+        return mock.get(
+            f"https://www.reddit.com/user/xavdid/{resource}.json",
+            match=[
+                matchers.query_param_matcher(params),
+                matchers.header_matcher({"user-agent": USER_AGENT}),
+            ],
+            json=json,
+        )
+
+    return _mock_request
+
+
 @pytest.fixture
 def mock_paged_request() -> Generator[MockPagedFunc, None, None]:
     """
     call this to mock a list of items for a user
     """
     with responses.RequestsMock() as mock:
-
-        def _mock_request(
-            resource: Literal["comments", "submitted"],
-            json: Any,
-            params: Optional[dict[str, str | int]] = None,
-        ):
-            params = {"limit": 100, "raw_json": 1, **(params or {})}
-
-            return mock.get(
-                f"https://www.reddit.com/user/xavdid/{resource}.json",
-                match=[
-                    matchers.query_param_matcher(params),
-                    matchers.header_matcher({"user-agent": USER_AGENT}),
-                ],
-                json=json,
-            )
-
-        yield _mock_request
+        yield _build_mock_paged_req(mock)
 
 
 class MockInfoFunc(Protocol):
     def __call__(self, ids: str, json: Any, limit=100) -> BaseResponse:
         ...
+
+
+# need to extract this so I can call it manually
+def _build_mock_info_req(mock: RequestsMock) -> MockInfoFunc:
+    def _mock_request(
+        ids: str,
+        json: Any,
+        limit=100,
+    ):
+        params = {"limit": limit, "raw_json": 1, "id": ids}
+
+        return mock.get(
+            "https://www.reddit.com/api/info.json",
+            match=[
+                matchers.query_param_matcher(params),
+                matchers.header_matcher({"user-agent": USER_AGENT}),
+            ],
+            json=json,
+        )
+
+    return _mock_request
 
 
 @pytest.fixture
@@ -429,24 +662,7 @@ def mock_info_request() -> Generator[MockInfoFunc, None, None]:
     call this to mirror loading info about a sequence of fullnames (type-prefixed ids)
     """
     with responses.RequestsMock() as mock:
-
-        def _mock_request(
-            ids: str,
-            json: Any,
-            limit=100,
-        ):
-            params = {"limit": limit, "raw_json": 1, "id": ids}
-
-            return mock.get(
-                "https://www.reddit.com/api/info.json",
-                match=[
-                    matchers.query_param_matcher(params),
-                    matchers.header_matcher({"user-agent": USER_AGENT}),
-                ],
-                json=json,
-            )
-
-        yield _mock_request
+        yield _build_mock_info_req(mock)
 
 
 @pytest.fixture
@@ -529,23 +745,26 @@ class MockUserFunc(Protocol):
         ...
 
 
+def _build_mock_user_request(mock: RequestsMock) -> MockUserFunc:
+    def _mock_request(username: str, json: Any):
+        return mock.get(
+            f"https://www.reddit.com/user/{username}/about.json",
+            match=[
+                matchers.header_matcher({"user-agent": USER_AGENT}),
+            ],
+            json=json,
+        )
+
+    return _mock_request
+
+
 @pytest.fixture
 def mock_user_request() -> Generator[MockUserFunc, None, None]:
     """
     call this to mirror loading info about a sequence of fullnames (type-prefixed ids)
     """
     with responses.RequestsMock() as mock:
-
-        def _mock_request(username: str, json: Any):
-            return mock.get(
-                f"https://www.reddit.com/user/{username}/about.json",
-                match=[
-                    matchers.header_matcher({"user-agent": USER_AGENT}),
-                ],
-                json=json,
-            )
-
-        yield _mock_request
+        yield _build_mock_user_request(mock)
 
 
 @pytest.fixture
@@ -591,6 +810,14 @@ def comments_file(archive_dir: Path):
 @pytest.fixture
 def posts_file(archive_dir: Path):
     return _build_test_file(archive_dir, "posts.csv", ["id", "d", "e", "f"])
+
+
+@pytest.fixture
+def empty_file_at_path(archive_dir: Path):
+    def _empty_file(filename: str):
+        return _build_test_file(archive_dir, filename, [])
+
+    return _empty_file
 
 
 # ---

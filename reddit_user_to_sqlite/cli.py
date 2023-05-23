@@ -120,11 +120,12 @@ def archive(archive_path: Path, db_path: str):
     if not (any_object_has_username(comments) or any_object_has_username(posts)):
         if username := get_username_from_archive(archive_path):
             user_id = get_user_id(username)
+
             comments = add_user_fragment(comments, username, user_id)
             posts = add_user_fragment(posts, username, user_id)
         else:
             click.echo(
-                "\nUnable to guess username from content or archive; some posts will not be saved.",
+                "\nUnable to guess username from API content or archive; some posts will not be saved.",
                 err=True,
             )
 

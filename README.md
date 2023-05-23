@@ -27,7 +27,18 @@ reddit-user-to-sqlite user your_username --db my-reddit-data.db
 
 > Note: the argument order is reversed from most dogsheep packages (which take db_path first). This method allows for use of a default db name, so I prefer it.
 
-1. `username`: a case-insensitive string. The leading `/u/` is optional (and ignored if supplied)
+1. `username`: a case-insensitive string. The leading `/u/` is optional (and ignored if supplied).
+2. (optional) `--db`: the path to a sqlite file, which will be created or updated as needed. Defaults to `reddit.db`.
+
+### archive
+
+Reads the output of a Reddit GDPR archive and fetches additional info from the Reddit API (where possible). This allows you to store more than 1k posts/comments.
+
+#### Params
+
+> Note: the argument order is reversed from most dogsheep packages (which take db_path first). This method allows for use of a default db name, so I prefer it.
+
+1. `archive_path`: the path to the (unzipped) archive directory on your machine. Don't rename/move the files that Reddit gives you.
 2. (optional) `--db`: the path to a sqlite file, which will be created or updated as needed. Defaults to `reddit.db`.
 
 ### A Note on Stored Data
