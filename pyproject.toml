@@ -27,6 +27,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest==7.3.1", "responses==0.23.1"]
+release = ["twine==4.0.2", "build==0.10.0"]
 
 [project.urls]
 "Homepage" = "https://github.com/xavdid/reddit-user-to-sqlite"

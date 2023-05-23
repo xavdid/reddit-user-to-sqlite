@@ -151,3 +151,15 @@ When running the `user` command, yes. It fetches and updates up to 1k each of co
 When running the `archive` command, no. To cut down on API requests, it only fetches data about comments/posts that aren't yet in the database (since the archive may include many items).
 
 Both of these may change in the future to be more in line with [Reddit's per-subreddit archiving guidelines](https://www.reddit.com/r/modnews/comments/py2xy2/voting_commenting_on_archived_posts/).
+
+## Releasing New Versions
+
+> these notes are mostly for myself (or other contributors)
+
+0. ensure tests pass (`pytest`)
+1. install release tooling (`pip install -e '.[release]'`)
+2. build the package (`python -m build`)
+3. upload the release (`python -m twine upload dist/*`)
+   1. give your username as `__token__`
+   2. give your password as your stored API key
+   3. If you're getting invalid password, verify that `~/.pypirc` is empty
