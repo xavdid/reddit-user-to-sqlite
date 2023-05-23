@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import pytest
 from sqlite_utils import Database
 

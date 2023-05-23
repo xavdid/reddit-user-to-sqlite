@@ -1,12 +1,4 @@
-from typing import (
-    Any,
-    Literal,
-    NotRequired,
-    Optional,
-    Sequence,
-    TypedDict,
-    final,
-)
+from typing import Any, Literal, NotRequired, Optional, Sequence, TypedDict, final
 
 import requests
 from tqdm import tqdm, trange

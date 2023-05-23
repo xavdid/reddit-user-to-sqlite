@@ -1,18 +1,19 @@
 from traceback import print_tb
+
 import pytest
-from click.testing import CliRunner
 import responses
+from click.testing import CliRunner
 from sqlite_utils import Database
 
 from reddit_user_to_sqlite.cli import add_missing_user_fragment, cli
 from tests.conftest import (
     MockInfoFunc,
     MockPagedFunc,
-    _wrap_response,
-    _build_test_file,
     _build_mock_info_req,
     _build_mock_paged_req,
     _build_mock_user_request,
+    _build_test_file,
+    _wrap_response,
 )
 
 

@@ -1,5 +1,4 @@
-from pprint import pprint
-from typing import Any, Callable, Iterable, Sequence, TypeVar, TypedDict, cast
+from typing import Callable, Iterable, TypedDict, TypeVar
 
 from sqlite_utils import Database
 

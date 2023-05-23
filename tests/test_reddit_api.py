@@ -4,13 +4,13 @@ import pytest
 
 from reddit_user_to_sqlite.reddit_api import (
     SuccessResponse,
+    _raise_reddit_error,
     get_user_id,
     load_comments_for_user,
     load_info,
     load_posts_for_user,
-    _raise_reddit_error,
 )
-from tests.conftest import MockInfoFunc, MockPagedFunc, MockUserFunc, empty_response
+from tests.conftest import MockInfoFunc, MockPagedFunc, MockUserFunc
 
 
 def test_load_comments(mock_paged_request: MockPagedFunc, comment_response, comment):

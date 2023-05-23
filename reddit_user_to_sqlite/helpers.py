@@ -1,7 +1,6 @@
 import re
 from itertools import islice
-from typing import Iterable, TypeVar, TYPE_CHECKING
-
+from typing import Iterable, TypeVar
 
 T = TypeVar("T")
 

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Generator, Literal, Optional, Protocol, Sequence
+from typing import Any, Generator, Literal, Optional, Protocol
 
 import pytest
 import responses

@@ -9,10 +9,10 @@ from reddit_user_to_sqlite.reddit_api import Comment, SubredditFragment, UserFra
 from reddit_user_to_sqlite.sqlite_helpers import (
     CommentRow,
     comment_to_comment_row,
-    item_to_subreddit_row,
-    item_to_user_row,
     insert_subreddits,
     insert_user,
+    item_to_subreddit_row,
+    item_to_user_row,
     post_to_post_row,
     upsert_comments,
     upsert_posts,
@@ -124,7 +124,7 @@ def test_insert_comments(tmp_db: Database, comment, stored_comment: CommentRow):
     failure_reasons = []
     for k in ["user", "subreddit"]:
         try:
-            tmp_db[f"{k}s"].get(stored_comment[k])
+            tmp_db[f"{k}s"].get(stored_comment[k])  # type: ignore
         except NotFoundError:
             failure_reasons.append(f"broken foreign key relationship for comment.{k}")
 
@@ -143,7 +143,7 @@ def test_update_comments(tmp_db: Database, comment: Comment, stored_comment):
     comment["score"] = 10
     upsert_comments(tmp_db, [comment])
 
-    updated_comment = tmp_db["comments"].get(comment["id"])
+    updated_comment = tmp_db["comments"].get(comment["id"])  # type: ignore
     assert updated_comment["score"] == 10
 
 
@@ -182,7 +182,7 @@ def test_insert_posts(
     failure_reasons = []
     for k in ["user", "subreddit"]:
         try:
-            tmp_db[f"{k}s"].get(stored_post[k])
+            tmp_db[f"{k}s"].get(stored_post[k])  # type: ignore
         except NotFoundError:
             failure_reasons.append(f"broken foreign key relationship for comment.{k}")
 
