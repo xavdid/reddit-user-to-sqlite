@@ -88,14 +88,14 @@ class Post(SubredditFragment, UserFragment):
     created: float
 
 
-class Subreddit(TypedDict):
-    should_archive_posts: bool
+# class Subreddit(TypedDict):
+#     should_archive_posts: bool
 
 
 @final
 class ResourceWrapper(TypedDict):
     kind: str
-    data: Comment | Post | Subreddit
+    data: Comment | Post
 
 
 @final
@@ -169,7 +169,7 @@ def load_posts_for_user(username: str) -> list[Post]:
     return _load_paged_resource("submitted", username)
 
 
-def load_info(resources: Sequence[str]) -> list[Comment | Post | Subreddit]:
+def load_info(resources: Sequence[str]) -> list[Comment | Post]:
     result = []
 
     for batch in batched(tqdm(resources), PAGE_SIZE):
