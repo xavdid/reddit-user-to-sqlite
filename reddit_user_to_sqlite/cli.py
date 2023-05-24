@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Iterable, TypeVar, cast
+from typing import Callable, Iterable, cast, TypeVar
 
 import click
 from sqlite_utils import Database
@@ -13,6 +13,7 @@ from reddit_user_to_sqlite.helpers import clean_username, find_user_details_from
 from reddit_user_to_sqlite.reddit_api import (
     Comment,
     Post,
+    add_missing_user_fragment,
     get_user_id,
     load_comments_for_user,
     load_info,
@@ -83,20 +84,6 @@ def user(db_path: str, username: str):
         raise click.ClickException(f"no data found for username: {username}")
 
     ensure_fts(db)
-
-
-def add_missing_user_fragment(
-    items: list[T], username: str, user_fullname: str
-) -> list[T]:
-    """
-    If an item lacks user details, this adds them. Otherwise the item passes through untouched.
-    """
-    return [
-        cast(T, {**i, "author": username, "author_fullname": user_fullname})
-        if "author_fullname" not in i
-        else i
-        for i in items
-    ]
 
 
 @cli.command()

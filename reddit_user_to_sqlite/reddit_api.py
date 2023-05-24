@@ -1,4 +1,14 @@
-from typing import Any, Literal, NotRequired, Optional, Sequence, TypedDict, final
+from typing import (
+    Any,
+    Literal,
+    NotRequired,
+    Optional,
+    Sequence,
+    TypedDict,
+    TypeVar,
+    cast,
+    final,
+)
 
 import requests
 from tqdm import tqdm, trange
@@ -190,3 +200,20 @@ def get_user_id(username: str) -> str:
     _raise_reddit_error(response)
 
     return response["data"]["id"]
+
+
+T = TypeVar("T", Comment, Post)
+
+
+def add_missing_user_fragment(
+    items: list[T], username: str, user_fullname: str
+) -> list[T]:
+    """
+    If an item lacks user details, this adds them. Otherwise the item passes through untouched.
+    """
+    return [
+        cast(T, {**i, "author": username, "author_fullname": user_fullname})
+        if "author_fullname" not in i
+        else i
+        for i in items
+    ]

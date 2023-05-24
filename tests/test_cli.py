@@ -4,7 +4,7 @@ import pytest
 from click.testing import CliRunner
 from sqlite_utils import Database
 
-from reddit_user_to_sqlite.cli import add_missing_user_fragment, cli
+from reddit_user_to_sqlite.cli import cli
 from tests.conftest import (
     MockInfoFunc,
     MockPagedFunc,
@@ -153,24 +153,6 @@ def test_posts_but_no_comments(
     assert list(tmp_db["users"].rows) == [stored_user]
     assert list(tmp_db["comments"].rows) == []
     assert list(tmp_db["posts"].rows) == [stored_self_post]
-
-
-def test_add_missing_user_fragment():
-    items = [{"a": 1}, {"a": 2}, {"a": 3}]
-    assert add_missing_user_fragment(items, "xavdid", "t2_abc123") == [  # type: ignore
-        {"a": 1, "author": "xavdid", "author_fullname": "t2_abc123"},
-        {"a": 2, "author": "xavdid", "author_fullname": "t2_abc123"},
-        {"a": 3, "author": "xavdid", "author_fullname": "t2_abc123"},
-    ]
-
-
-def test_add_missing_user_fragment_no_overwrite():
-    items = [{"a": 1}, {"author": "david", "author_fullname": "t2_def456"}]
-
-    assert add_missing_user_fragment(items, "xavdid", "t2_abc123") == [  # type: ignore
-        {"a": 1, "author": "xavdid", "author_fullname": "t2_abc123"},
-        {"author": "david", "author_fullname": "t2_def456"},
-    ]
 
 
 @pytest.mark.usefixtures("comments_file", "posts_file")

@@ -9,6 +9,7 @@ from reddit_user_to_sqlite.reddit_api import (
     load_comments_for_user,
     load_info,
     load_posts_for_user,
+    add_missing_user_fragment,
 )
 from tests.conftest import MockInfoFunc, MockPagedFunc, MockUserFunc
 
@@ -120,3 +121,21 @@ def test_get_user_id_unknown_user(mock_user_request: MockUserFunc):
     mock_user_request("xavdid", json={"message": "Not Found", "error": 404})
     with pytest.raises(ValueError):
         get_user_id("xavdid")
+
+
+def test_add_missing_user_fragment():
+    items = [{"a": 1}, {"a": 2}, {"a": 3}]
+    assert add_missing_user_fragment(items, "xavdid", "t2_abc123") == [  # type: ignore
+        {"a": 1, "author": "xavdid", "author_fullname": "t2_abc123"},
+        {"a": 2, "author": "xavdid", "author_fullname": "t2_abc123"},
+        {"a": 3, "author": "xavdid", "author_fullname": "t2_abc123"},
+    ]
+
+
+def test_add_missing_user_fragment_no_overwrite():
+    items = [{"a": 1}, {"author": "david", "author_fullname": "t2_def456"}]
+
+    assert add_missing_user_fragment(items, "xavdid", "t2_abc123") == [  # type: ignore
+        {"a": 1, "author": "xavdid", "author_fullname": "t2_abc123"},
+        {"author": "david", "author_fullname": "t2_def456"},
+    ]
