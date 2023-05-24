@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Generator, Literal, Optional, Protocol
+from typing import Any, Literal, Optional, Protocol
 
 import pytest
 import responses
@@ -209,6 +209,16 @@ def removed_comment():
         "subreddit_type": "public",
         "ups": -1,
     }
+
+
+@pytest.fixture
+def removed_comment_response(removed_comment):
+    return _wrap_response(removed_comment)
+
+
+@pytest.fixture
+def all_comments_response(comment, removed_comment):
+    return _wrap_response(comment, removed_comment)
 
 
 @pytest.fixture
@@ -593,6 +603,12 @@ def empty_response():
     return _wrap_response()
 
 
+@pytest.fixture()
+def mock():
+    with responses.RequestsMock() as mock_requests:
+        yield mock_requests
+
+
 class MockPagedFunc(Protocol):
     def __call__(
         self,
@@ -603,7 +619,12 @@ class MockPagedFunc(Protocol):
         ...
 
 
-def _build_mock_paged_req(mock: RequestsMock) -> MockPagedFunc:
+@pytest.fixture
+def mock_paged_request(mock: RequestsMock) -> MockPagedFunc:
+    """
+    call this to mock a list of items for a user
+    """
+
     def _mock_request(
         resource: Literal["comments", "submitted"],
         json: Any,
@@ -623,22 +644,21 @@ def _build_mock_paged_req(mock: RequestsMock) -> MockPagedFunc:
     return _mock_request
 
 
-@pytest.fixture
-def mock_paged_request() -> Generator[MockPagedFunc, None, None]:
-    """
-    call this to mock a list of items for a user
-    """
-    with responses.RequestsMock() as mock:
-        yield _build_mock_paged_req(mock)
-
-
 class MockInfoFunc(Protocol):
     def __call__(self, ids: str, json: Any, limit=100) -> BaseResponse:
         ...
 
 
 # need to extract this so I can call it manually
-def _build_mock_info_req(mock: RequestsMock) -> MockInfoFunc:
+# def _build_mock_info_req(mock: RequestsMock) -> MockInfoFunc:
+
+
+@pytest.fixture
+def mock_info_request(mock: RequestsMock) -> MockInfoFunc:
+    """
+    call this to mirror loading info about a sequence of fullnames (type-prefixed ids)
+    """
+
     def _mock_request(
         ids: str,
         json: Any,
@@ -659,12 +679,13 @@ def _build_mock_info_req(mock: RequestsMock) -> MockInfoFunc:
 
 
 @pytest.fixture
-def mock_info_request() -> Generator[MockInfoFunc, None, None]:
-    """
-    call this to mirror loading info about a sequence of fullnames (type-prefixed ids)
-    """
-    with responses.RequestsMock() as mock:
-        yield _build_mock_info_req(mock)
+def comment_info_response(modify_comment):
+    return _wrap_response(*(modify_comment({"id": i}) for i in "ac"))
+
+
+@pytest.fixture
+def post_info_response(modify_post):
+    return _wrap_response(*(modify_post({"id": i}) for i in "df"))
 
 
 @pytest.fixture
@@ -752,7 +773,15 @@ class MockUserFunc(Protocol):
         ...
 
 
-def _build_mock_user_request(mock: RequestsMock) -> MockUserFunc:
+# def _build_mock_user_request(mock: RequestsMock) -> MockUserFunc:
+
+
+@pytest.fixture
+def mock_user_request(mock: RequestsMock) -> MockUserFunc:
+    """
+    call this to mirror loading info about a sequence of fullnames (type-prefixed ids)
+    """
+
     def _mock_request(username: str, json: Any):
         return mock.get(
             f"https://www.reddit.com/user/{username}/about.json",
@@ -766,36 +795,36 @@ def _build_mock_user_request(mock: RequestsMock) -> MockUserFunc:
 
 
 @pytest.fixture
-def mock_user_request() -> Generator[MockUserFunc, None, None]:
-    """
-    call this to mirror loading info about a sequence of fullnames (type-prefixed ids)
-    """
-    with responses.RequestsMock() as mock:
-        yield _build_mock_user_request(mock)
-
-
-@pytest.fixture
 def archive_dir(tmp_path: Path):
     (archive_dir := tmp_path / "archive").mkdir()
     return archive_dir
 
 
-def _build_test_file(archive_dir: Path, filename: str, lines: list[str]):
-    """
-    write `lines` into `archive_dir/filename`.
-    """
-    (new_file := archive_dir / filename).write_text("\n".join(lines))
-    return new_file
+class WriteArchiveFileFunc(Protocol):
+    def __call__(self, filename: str, lines: list[str]) -> Path:
+        ...
 
 
 @pytest.fixture
-def stats_file(archive_dir: Path):
+def write_archive_file(archive_dir: Path) -> WriteArchiveFileFunc:
+    """
+    write `lines` into `archive_dir/filename`.
+    """
+
+    def _write_file(filename: str, lines: list[str]):
+        (new_file := archive_dir / filename).write_text("\n".join(lines))
+        return new_file
+
+    return _write_file
+
+
+@pytest.fixture
+def stats_file(write_archive_file: WriteArchiveFileFunc):
     """
     write a basic statistics file into the archive directory
     """
 
-    return _build_test_file(
-        archive_dir,
+    return write_archive_file(
         "statistics.csv",
         [
             "statistic,value",
@@ -810,19 +839,19 @@ def stats_file(archive_dir: Path):
 
 
 @pytest.fixture
-def comments_file(archive_dir: Path):
-    return _build_test_file(archive_dir, "comments.csv", ["id", "a", "b", "c"])
+def comments_file(write_archive_file: WriteArchiveFileFunc):
+    return write_archive_file("comments.csv", ["id", "a", "c"])
 
 
 @pytest.fixture
-def posts_file(archive_dir: Path):
-    return _build_test_file(archive_dir, "posts.csv", ["id", "d", "e", "f"])
+def posts_file(write_archive_file: WriteArchiveFileFunc):
+    return write_archive_file("posts.csv", ["id", "d", "f"])
 
 
 @pytest.fixture
-def empty_file_at_path(archive_dir: Path):
+def empty_file_at_path(write_archive_file: WriteArchiveFileFunc):
     def _empty_file(filename: str):
-        return _build_test_file(archive_dir, filename, [])
+        return write_archive_file(filename, [])
 
     return _empty_file
 

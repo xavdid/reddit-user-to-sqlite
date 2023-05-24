@@ -29,7 +29,6 @@ def test_load_comment_ids_from_file_empty_db(
 ):
     assert load_ids_from_file(tmp_db, archive_dir, "comments") == [
         "t1_a",
-        "t1_b",
         "t1_c",
     ]
 
@@ -40,7 +39,6 @@ def test_load_comment_ids_from_file_some_db(
     tmp_db["comments"].insert({"id": "a"})  # type: ignore
 
     assert load_ids_from_file(tmp_db, archive_dir, "comments") == [
-        "t1_b",
         "t1_c",
     ]
 
@@ -56,16 +54,14 @@ def test_load_comment_ids_missing_files(tmp_db: Database, archive_dir):
 def test_load_post_ids_from_file_empty_db(tmp_db: Database, archive_dir, posts_file):
     assert load_ids_from_file(tmp_db, archive_dir, "posts") == [
         "t3_d",
-        "t3_e",
         "t3_f",
     ]
 
 
 def test_load_post_ids_from_file_some_db(tmp_db: Database, archive_dir, posts_file):
-    tmp_db["posts"].insert({"id": "e"})  # type: ignore
+    tmp_db["posts"].insert({"id": "d"})  # type: ignore
 
     assert load_ids_from_file(tmp_db, archive_dir, "posts") == [
-        "t3_d",
         "t3_f",
     ]
 
