@@ -150,9 +150,9 @@ This installs the package in `--edit` mode and makes its dependencies available.
 
 ### Running Tests
 
-In your virtual environment, a simple `pytest` should run the unit test suite.
+In your virtual environment, a simple `pytest` should run the unit test suite. You can also run `pyright` for type checking.
 
-## Releasing New Versions
+### Releasing New Versions
 
 > these notes are mostly for myself (or other contributors)
 
