@@ -1,7 +1,7 @@
+from typing_extensions import NotRequired
 from typing import (
     Any,
     Literal,
-    NotRequired,
     Optional,
     Sequence,
     TypedDict,
