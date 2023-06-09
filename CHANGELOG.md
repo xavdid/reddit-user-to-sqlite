@@ -2,6 +2,12 @@
 
 This project uses [SemVer](https://semver.org/) for versioning. Its public APIs, runtime support, and documented file locations won't change incompatibly outside of major versions (once version 1.0.0 has been released). There may be breaking schema changes in minor releases before 1.0.0 and will be noted in these release notes.
 
+## 0.3.1
+
+_released `2023-06-09`_
+
+- remove dependency on 3.11 by adding `typing-extensions` ([#3](https://github.com/xavdid/reddit-user-to-sqlite/pull/3))
+
 ## 0.3.0
 
 _released `2023-05-23`_
