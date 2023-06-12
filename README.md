@@ -115,12 +115,31 @@ I got nervous when I saw Reddit's [notification of upcoming API changes](https:/
 
 ## FAQs
 
-### Why do some of my posts say `[removed]` even though I can see them?
+### Why does this post only show 1k recent comments / posts?
+
+Reddit's paging API only shows 1000 items (page 11 is an empty list). If you have more comments (or posts) than than that, you can use the [GDPR archive import feature](#archive) feature to backfill your older data.
+
+### Why are my longer posts truncated in Datasette?
+
+Datasette truncates long text fields by default. You can disable this behavior by using the `truncate_cells_html` flag when running `datasette` ([see the docs](https://docs.datasette.io/en/stable/settings.html#truncate-cells-html)):
+
+```shell
+datasette reddit.db --setting truncate_cells_html 0
+```
+
+### How do I store a username that starts with `-`?
+
+By default, [click](https://click.palletsprojects.com/en/8.1.x/) (the argument parser this uses) interprets leading dashes on argument as a flag. If you're fetching data for user `-asdf`, you'll get an error saying `Error: No such option: -a`. To ensure the last argument is interpreted positionally, put it after a `--`:
+
+```shell
+reddit-user-to-sqlite user -- -asdf
+```
+
+### Why do some of my posts say `[removed]` even though I can see them on the web?
 
 If a post is removed, only the mods and the user who posted it can see its text. Since this tool currently runs without any authentication, those removed posts can't be fetched via the API.
 
-To fetch data about your own removed posts, use the GDPR archive import
-This will be fixed in a future release, either by:
+To load data about your own removed posts, use the [GDPR archive import feature](#archive).
 
 ### Why is the database missing data returned by the Reddit API?
 
