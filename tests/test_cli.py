@@ -475,7 +475,7 @@ def test_missing_username_entirely(
     assert not api_result.exception, print(api_result.exception)
 
     assert "Unable to guess username" in api_result.output
-    assert "some posts will not be saved." in api_result.output
+    assert "some data will not be saved." in api_result.output
     assert "ignored for now" in api_result.output
 
     assert tmp_db.table_names() == ["subreddits"]
@@ -487,3 +487,61 @@ def test_missing_username_entirely(
     assert list(tmp_db["users"].rows) == []
     assert list(tmp_db["comments"].rows) == []
     assert list(tmp_db["posts"].rows) == []
+
+
+def test_load_saved_data(
+    tmp_db: Database,
+    tmp_db_path,
+    archive_dir,
+    empty_file_at_path,
+    mock_info_request: MockInfoFunc,
+    write_archive_file: WriteArchiveFileFunc,
+    all_comments_response,
+    stored_user,
+    stored_comment,
+):
+    empty_file_at_path("comments.csv")
+    empty_file_at_path("posts.csv")
+    empty_file_at_path("statistics.csv")
+    write_archive_file("saved_comments.csv", ["id", "jj0ti6f", "c3sgfl4"])
+
+    mock_info_request("t1_jj0ti6f,t1_c3sgfl4", json=all_comments_response)
+
+    api_result = CliRunner().invoke(
+        cli,
+        [
+            "archive",
+            str(archive_dir),
+            "--db",
+            tmp_db_path,
+            "--include-saved",
+        ],
+    )
+    print(api_result.exc_info)
+    assert not api_result.exception, api_result.exception
+
+    assert {
+        "subreddits",
+        "users",
+        "comments",
+        "comments_fts",
+        # "posts",
+        # "posts_fts",
+    }.issubset(tmp_db.table_names())
+
+    assert list(tmp_db["subreddits"].rows) == [
+        {"id": "2t3ad", "name": "patientgamers", "type": "public"},
+        {"id": "2qm4e", "name": "askscience", "type": "public"},
+    ]
+    # TODO: should include deleted user
+    assert list(tmp_db["users"].rows) == [stored_user]
+    # TODO: should include stored removed comment
+    assert list(tmp_db["comments"].rows) == [stored_comment]
+    # assert list(tmp_db["posts"].rows) == [
+    #     stored_self_post,
+    #     # stored_removed_post, # posts without authors are skipped
+    #     stored_external_post,
+    # ]
+
+    # assert comment_response.call_count == 1
+    # assert post_response.call_count == 1

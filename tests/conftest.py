@@ -844,8 +844,18 @@ def comments_file(write_archive_file: WriteArchiveFileFunc):
 
 
 @pytest.fixture
+def saved_comments_file(write_archive_file: WriteArchiveFileFunc):
+    return write_archive_file("saved_comments.csv", ["id", "g", "h"])
+
+
+@pytest.fixture
 def posts_file(write_archive_file: WriteArchiveFileFunc):
     return write_archive_file("posts.csv", ["id", "d", "f"])
+
+
+@pytest.fixture
+def saved_posts_file(write_archive_file: WriteArchiveFileFunc):
+    return write_archive_file("saved_posts.csv", ["id", "j", "k"])
 
 
 @pytest.fixture

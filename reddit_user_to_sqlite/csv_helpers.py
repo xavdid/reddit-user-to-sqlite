@@ -4,15 +4,20 @@ from typing import Literal
 
 from sqlite_utils import Database
 
-ItemType = Literal["comments", "posts"]
-PREFIX: dict[ItemType, str] = {"comments": "t1", "posts": "t3"}
+ItemType = Literal["comments", "posts", "saved_comments", "saved_posts"]
+PREFIX: dict[ItemType, str] = {
+    "comments": "t1",
+    "saved_comments": "t1",
+    "posts": "t3",
+    "saved_posts": "t3",
+}
 
 
 def validate_and_build_path(archive_path: Path, item_type: str) -> Path:
     filename = f"{item_type}.csv"
     if not (file := archive_path / filename).exists():
         raise ValueError(
-            f'Ensure path "{archive_path}" points to an unzipped Reddit GDPR archive folder; {filename} not found in the expected spot.'
+            f'Ensure path "{archive_path}" points to an unzipped Reddit GDPR archive folder; "{filename}" not found in the expected spot.'
         )
     return file
 
