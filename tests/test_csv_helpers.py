@@ -24,18 +24,16 @@ def test_validate_and_build_fails(archive_dir: Path):
     assert "posts.csv not found" in err_msg
 
 
-def test_load_comment_ids_from_file_empty_db(
-    tmp_db: Database, archive_dir, comments_file
-):
+@pytest.mark.usefixtures("comments_file")
+def test_load_comment_ids_from_file_empty_db(tmp_db: Database, archive_dir):
     assert load_ids_from_file(tmp_db, archive_dir, "comments") == [
         "t1_a",
         "t1_c",
     ]
 
 
-def test_load_comment_ids_from_file_some_db(
-    tmp_db: Database, archive_dir, comments_file
-):
+@pytest.mark.usefixtures("comments_file")
+def test_load_comment_ids_from_file_some_db(tmp_db: Database, archive_dir):
     tmp_db["comments"].insert({"id": "a"})  # type: ignore
 
     assert load_ids_from_file(tmp_db, archive_dir, "comments") == [
@@ -51,14 +49,16 @@ def test_load_comment_ids_missing_files(tmp_db: Database, archive_dir):
     assert "comments.csv not found" in err_msg
 
 
-def test_load_post_ids_from_file_empty_db(tmp_db: Database, archive_dir, posts_file):
+@pytest.mark.usefixtures("posts_file")
+def test_load_post_ids_from_file_empty_db(tmp_db: Database, archive_dir):
     assert load_ids_from_file(tmp_db, archive_dir, "posts") == [
         "t3_d",
         "t3_f",
     ]
 
 
-def test_load_post_ids_from_file_some_db(tmp_db: Database, archive_dir, posts_file):
+@pytest.mark.usefixtures("posts_file")
+def test_load_post_ids_from_file_some_db(tmp_db: Database, archive_dir):
     tmp_db["posts"].insert({"id": "d"})  # type: ignore
 
     assert load_ids_from_file(tmp_db, archive_dir, "posts") == [
@@ -73,7 +73,8 @@ def test_load_post_ids_missing_files(tmp_db: Database, archive_dir):
     assert "posts.csv not found" in str(err.value)
 
 
-def test_get_username_from_archive(archive_dir, stats_file):
+@pytest.mark.usefixtures("stats_file")
+def test_get_username_from_archive(archive_dir):
     assert get_username_from_archive(archive_dir) == "xavdid"
 
 

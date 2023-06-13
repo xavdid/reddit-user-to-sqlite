@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Iterable, cast, TypeVar
+from typing import Callable, Iterable, TypeVar, cast
 
 import click
 from sqlite_utils import Database
