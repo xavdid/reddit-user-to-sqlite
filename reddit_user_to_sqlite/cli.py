@@ -38,7 +38,7 @@ def cli():
 DB_PATH_HELP = "A path to a SQLite database file. If it doesn't exist, it will be created. It can have any extension, `.db` or `.sqlite` is recommended."
 DEFAULT_DB_NAME = "reddit.db"
 
-DELETED_USERNAME = "ArchiverUnknownUser"
+DELETED_USERNAME = "__DeletedUser__"
 DELETED_USER_FULLNAME = "t2_1234567"
 
 T = TypeVar("T", Comment, Post)

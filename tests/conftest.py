@@ -729,7 +729,7 @@ def stored_user() -> UserRow:
 
 @pytest.fixture
 def deleted_user() -> UserRow:
-    return {"id": "1234567", "username": "ArchiverUnknownUser"}
+    return {"id": "1234567", "username": "__DeletedUser__"}
 
 
 @pytest.fixture
