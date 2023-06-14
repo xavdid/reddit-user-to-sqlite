@@ -75,7 +75,6 @@ def load_data_from_files(
     new_comment_ids = load_unsaved_ids_from_file(
         db, archive_path, "comments", prefix=tables_prefix
     )
-    # print(f"found {new_comment_ids=}")
     click.echo("\nFetching info about your comments")
     comments = cast(list[Comment], load_info(new_comment_ids))
 
@@ -180,10 +179,9 @@ def user(db_path: str, username: str):
 )
 @click.option(
     "--skip-saved",
-    "skip_saved",
     is_flag=True,
     default=False,
-    help="Hydrate data about your saved posts and comments.",
+    help="Skip hydrating data about your saved posts and comments.",
 )
 def archive(archive_path: Path, db_path: str, skip_saved: bool):
     click.echo(f"loading data found in archive at {archive_path} into {db_path}")
@@ -191,6 +189,9 @@ def archive(archive_path: Path, db_path: str, skip_saved: bool):
     db = Database(db_path)
 
     load_data_from_files(db, archive_path)
-    load_data_from_files(db, archive_path, own_data=False, tables_prefix="saved_")
+
+    # I don't love this double negative, but it is what it is
+    if not skip_saved:
+        load_data_from_files(db, archive_path, own_data=False, tables_prefix="saved_")
 
     ensure_fts(db)

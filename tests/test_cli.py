@@ -576,6 +576,46 @@ def test_load_saved_data(
     ]
     assert list(tmp_db["saved_posts"].rows) == [
         stored_self_post,
-        stored_removed_post_placeholder_user,  # posts without authors are skipped
+        stored_removed_post_placeholder_user,
         stored_external_post,
     ]
+
+
+def test_load_data_skip_saved(
+    tmp_db: Database,
+    tmp_db_path,
+    archive_dir,
+    empty_file_at_path,
+    write_archive_file: WriteArchiveFileFunc,
+):
+    empty_file_at_path("comments.csv")
+    empty_file_at_path("posts.csv")
+    empty_file_at_path("statistics.csv")
+    write_archive_file("saved_comments.csv", ["id", "jj0ti6f", "c3sgfl4"])
+    write_archive_file("saved_posts.csv", ["id", "uypaav", "1f55rr", "qwer"])
+
+    result = CliRunner().invoke(
+        cli,
+        ["archive", str(archive_dir), "--db", tmp_db_path, "--skip-saved"],
+    )
+    assert not result.exception, result.exception
+    assert result.stdout  # not sure why it's in "out" not "err"
+    assert "saved 0 new comments" in result.stdout
+
+    table_names = tmp_db.table_names()
+    for s in {
+        "subreddits",
+        "users",
+        "saved_comments",
+        "saved_comments_fts",
+        "saved_posts",
+        "saved_posts_fts",
+        "comments",
+        "posts",
+    }:
+        assert s not in table_names
+
+    assert list(tmp_db["subreddits"].rows) == []
+    assert list(tmp_db["users"].rows) == []
+    assert list(tmp_db["saved_comments"].rows) == []
+    assert list(tmp_db["saved_posts"].rows) == []
