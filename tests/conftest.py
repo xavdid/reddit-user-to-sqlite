@@ -256,6 +256,21 @@ def stored_removed_comment() -> CommentRow:
 
 
 @pytest.fixture
+def stored_removed_comment_placeholder_user() -> CommentRow:
+    return {
+        "controversiality": 0,
+        "id": "c3sgfl4",
+        "is_submitter": 0,
+        "permalink": "https://old.reddit.com/r/askscience/comments/asdf/why_do_birds_fly/?context=10",
+        "score": -1,
+        "subreddit": "2qm4e",
+        "text": "[removed]",
+        "timestamp": 1329550785,
+        "user": "1234567",
+    }
+
+
+@pytest.fixture
 def comment_response(comment) -> SuccessResponse:
     """
     The full response from Reddit with a comment child
@@ -461,7 +476,7 @@ def removed_post():
         "name": "t3_1f55rr",
         "quarantine": False,
         "link_flair_text_color": "dark",
-        "upvote_ratio": 1.0,
+        "upvote_ratio": 1,
         "author_flair_background_color": "",
         "subreddit_type": "public",
         "ups": 1,
@@ -559,9 +574,28 @@ def stored_removed_post() -> PostRow:
         "text": "[deleted]",
         "timestamp": 1369671390,
         "title": "Tommy Wiseau Wishes YOU A Happy Memorial Day! — Urban Outfitters",
-        "upvote_ratio": 1.0,
+        "upvote_ratio": 1,
         # manually added this - if it's stored, I must have found a user
         "user": "np8mb41h",
+    }
+
+
+@pytest.fixture
+def stored_removed_post_placeholder_user() -> PostRow:
+    return {
+        "external_url": "",
+        "id": "1f55rr",
+        "is_removed": 0,
+        "num_awards": 0,
+        "num_comments": 0,
+        "permalink": "https://old.reddit.com/r/videos/comments/1f55rr/tommy_wiseau_wishes_you_a_happy_memorial_day/",
+        "score": 1,
+        "subreddit": "2qh1e",
+        "text": "[deleted]",
+        "timestamp": 1369671390,
+        "title": "Tommy Wiseau Wishes YOU A Happy Memorial Day! — Urban Outfitters",
+        "upvote_ratio": 1,
+        "user": "1234567",
     }
 
 
@@ -694,6 +728,11 @@ def stored_user() -> UserRow:
 
 
 @pytest.fixture
+def deleted_user() -> UserRow:
+    return {"id": "1234567", "username": "ArchiverUnknownUser"}
+
+
+@pytest.fixture
 def user_response():
     return {
         "kind": "t2",
@@ -771,9 +810,6 @@ def user_response():
 class MockUserFunc(Protocol):
     def __call__(self, username: str, json: Any) -> BaseResponse:
         ...
-
-
-# def _build_mock_user_request(mock: RequestsMock) -> MockUserFunc:
 
 
 @pytest.fixture

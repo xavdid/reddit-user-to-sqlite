@@ -1,13 +1,14 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Iterable, TypeVar, cast
+from typing import Callable, Iterable, Optional, TypeVar, cast
 
 import click
 from sqlite_utils import Database
 
 from reddit_user_to_sqlite.csv_helpers import (
+    PrefixType,
     get_username_from_archive,
-    load_ids_from_file,
+    load_unsaved_ids_from_file,
 )
 from reddit_user_to_sqlite.helpers import clean_username, find_user_details_from_items
 from reddit_user_to_sqlite.reddit_api import (
@@ -22,7 +23,7 @@ from reddit_user_to_sqlite.reddit_api import (
 from reddit_user_to_sqlite.sqlite_helpers import (
     ensure_fts,
     insert_subreddits,
-    insert_user,
+    insert_users,
     upsert_comments,
     upsert_posts,
 )
@@ -44,18 +45,94 @@ T = TypeVar("T", Comment, Post)
 
 
 def _save_items(
-    db: Database, items: list[T], upsert_func: Callable[[Database, Iterable[T]], int]
+    db: Database,
+    items: list[T],
+    upsert_func: Callable[[Database, Iterable[T], Optional[PrefixType]], int],
+    table_prefix: Optional[PrefixType] = None,
 ) -> int:
     if not items:
         return 0
 
-    insert_user(db, items[0])  # TODO: modify to add all missing users
+    insert_users(db, items)
     insert_subreddits(db, items)
-    return upsert_func(db, items)
+    return upsert_func(db, items, table_prefix)
 
 
 save_comments = partial(_save_items, upsert_func=upsert_comments)
 save_posts = partial(_save_items, upsert_func=upsert_posts)
+
+
+def load_data_from_files(
+    db: Database,
+    archive_path: Path,
+    own_data=True,
+    tables_prefix: Optional[PrefixType] = None,
+):
+    """
+    if own data is true, requires a username to save. Otherwise, will add a placeholder
+    (for external data)
+    """
+    new_comment_ids = load_unsaved_ids_from_file(
+        db, archive_path, "comments", prefix=tables_prefix
+    )
+    # print(f"found {new_comment_ids=}")
+    click.echo("\nFetching info about your comments")
+    comments = cast(list[Comment], load_info(new_comment_ids))
+
+    post_ids = load_unsaved_ids_from_file(
+        db, archive_path, "posts", prefix=tables_prefix
+    )
+    click.echo("\nFetching info about your posts")
+    posts = cast(list[Post], load_info(post_ids))
+
+    username = None
+    user_fullname = None
+
+    if own_data:
+        # find the username, first from any of the loaded comments/posts
+        if user_details := (
+            find_user_details_from_items(comments)
+            or find_user_details_from_items(posts)
+        ):
+            username, user_fullname = user_details
+        # if all loaded posts are removed (which could be the case on subsequent runs),
+        # then try to load from archive
+        elif username := get_username_from_archive(archive_path):
+            user_fullname = f"t2_{get_user_id(username)}"
+        # otherwise, your posts without a username won't be saved;
+        # this only happens for malformed archives
+        else:
+            click.echo(
+                "\nUnable to guess username from API content or archive; some data will not be saved.",
+                err=True,
+            )
+    else:
+        username = DELETED_USERNAME
+        user_fullname = DELETED_USER_FULLNAME
+
+    if username and user_fullname:
+        comments = add_missing_user_fragment(comments, username, user_fullname)
+        posts = add_missing_user_fragment(posts, username, user_fullname)
+
+    num_comments_written = save_comments(db, comments, table_prefix=tables_prefix)
+    num_posts_written = save_posts(db, posts, table_prefix=tables_prefix)
+
+    messages = [
+        "\nDone!",
+        f" - saved {num_comments_written} new comments",
+        f" - saved {num_posts_written} new posts",
+    ]
+
+    if missing_comments := len(comments) - num_comments_written:
+        messages.append(
+            f" - failed to find {missing_comments} missing comments; ignored for now"
+        )
+    if missing_posts := len(post_ids) - num_posts_written:
+        messages.append(
+            f" - failed to find {missing_posts} missing posts; ignored for now"
+        )
+
+    click.echo("\n".join(messages))
 
 
 @cli.command()
@@ -102,78 +179,18 @@ def user(db_path: str, username: str):
     help=DB_PATH_HELP,
 )
 @click.option(
-    "--include-saved",
-    "saved",
+    "--skip-saved",
+    "skip_saved",
     is_flag=True,
     default=False,
     help="Hydrate data about your saved posts and comments.",
 )
-def archive(archive_path: Path, db_path: str, saved: bool):
+def archive(archive_path: Path, db_path: str, skip_saved: bool):
     click.echo(f"loading data found in archive at {archive_path} into {db_path}")
 
     db = Database(db_path)
 
-    comment_ids = load_ids_from_file(db, archive_path, "comments")
-    click.echo("\nFetching info about your comments")
-    comments = cast(list[Comment], load_info(comment_ids))
+    load_data_from_files(db, archive_path)
+    load_data_from_files(db, archive_path, own_data=False, tables_prefix="saved_")
 
-    post_ids = load_ids_from_file(db, archive_path, "posts")
-    click.echo("\nFetching info about your posts")
-    posts = cast(list[Post], load_info(post_ids))
-
-    # find the username, first from any of the loaded comments/posts
-    if user_details := (
-        find_user_details_from_items(comments) or find_user_details_from_items(posts)
-    ):
-        username, user_fullname = user_details
-
-        comments = add_missing_user_fragment(comments, username, user_fullname)
-        posts = add_missing_user_fragment(posts, username, user_fullname)
-    # if all loaded posts are removed (which could be the case on subsequent runs), then try to load from archive
-    elif username := get_username_from_archive(archive_path):
-        user_fullname = f"t2_{get_user_id(username)}"
-
-        comments = add_missing_user_fragment(comments, username, user_fullname)
-        posts = add_missing_user_fragment(posts, username, user_fullname)
-    else:
-        click.echo(
-            "\nUnable to guess username from API content or archive; some data will not be saved.",
-            err=True,
-        )
-
-    # also load saved data, but don't add user info to it
-    if saved:
-        saved_comments_ids = load_ids_from_file(db, archive_path, "saved_comments")
-        click.echo("\nFetching info about saved comments")
-        # add deleted user placeholder so posts get saved;
-        # we'll never know who these belonged to (unlike our own deleted posts)
-        saved_comments = add_missing_user_fragment(
-            cast(list[Comment], load_info(saved_comments_ids)),
-            DELETED_USERNAME,
-            DELETED_USER_FULLNAME,
-        )
-        comments.extend(saved_comments)
-
-        # TODO: saved posts
-        # click.echo("\nFetching info about saved posts")
-
-    num_comments_written = save_comments(db, comments)
-    num_posts_written = save_posts(db, posts)
     ensure_fts(db)
-
-    messages = [
-        "\nDone!",
-        f" - saved {num_comments_written} new comments",
-        f" - saved {num_posts_written} new posts",
-    ]
-
-    if missing_comments := len(comment_ids) - num_comments_written:
-        messages.append(
-            f" - failed to find {missing_comments} missing comments; ignored for now"
-        )
-    if missing_posts := len(post_ids) - num_posts_written:
-        messages.append(
-            f" - failed to find {missing_posts} missing posts; ignored for now"
-        )
-
-    click.echo("\n".join(messages))
