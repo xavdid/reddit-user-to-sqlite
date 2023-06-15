@@ -45,3 +45,6 @@ build-backend = "flit_core.buildapi"
 
 # needed so the LSP performs typechecking
 [tool.pyright]
+
+[tool.isort]
+profile = "black"
