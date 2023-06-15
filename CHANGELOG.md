@@ -6,8 +6,9 @@ This project uses [SemVer](https://semver.org/) for versioning. Its public APIs,
 
 _released `TBD`_
 
-- the `archive` command includes saved posts / comments by default (in their own table). Use the `--skip-saved` flag to opt out of this behavior
-- added support for disabling the progress bars via the `DISABLE_PROGRESS` env var. Set it to `1` to disable progress bars
+- the `archive` command includes saved posts / comments by default (in their own table). Use the `--skip-saved` flag to opt out of this behavior ([#16](https://github.com/xavdid/reddit-user-to-sqlite/pull/16))
+- add `num_awards` column to comments (was omitted by accident) ([#17](https://github.com/xavdid/reddit-user-to-sqlite/pull/17))
+- added support for disabling the progress bars via the `DISABLE_PROGRESS` env var. Set it to `1` to disable progress bars ([#16](https://github.com/xavdid/reddit-user-to-sqlite/pull/16))
 
 ## 0.3.1
 

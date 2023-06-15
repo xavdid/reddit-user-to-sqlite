@@ -14,13 +14,13 @@ from reddit_user_to_sqlite.reddit_api import (
 from reddit_user_to_sqlite.sqlite_helpers import (
     CommentRow,
     comment_to_comment_row,
-    insert_subreddits,
     insert_users,
     item_to_subreddit_row,
     item_to_user_row,
     post_to_post_row,
     upsert_comments,
     upsert_posts,
+    upsert_subreddits,
 )
 
 
@@ -49,7 +49,7 @@ def make_user() -> MakeUserFunc:
 
 
 def test_insert_subreddits(tmp_db: Database, make_sr):
-    insert_subreddits(
+    upsert_subreddits(
         tmp_db,
         [
             make_sr("Games"),
@@ -68,7 +68,7 @@ def test_insert_subreddits(tmp_db: Database, make_sr):
     "skipped because of a sqlite-utils bug; subreddits to get upserted right now"
 )
 def test_repeat_subs_ignored(tmp_db: Database, make_sr):
-    insert_subreddits(
+    upsert_subreddits(
         tmp_db,
         [
             make_sr("Games"),
@@ -77,7 +77,7 @@ def test_repeat_subs_ignored(tmp_db: Database, make_sr):
     )
 
     # updates are ignored
-    insert_subreddits(
+    upsert_subreddits(
         tmp_db,
         [
             make_sr("ames", id_="Games"),
@@ -114,7 +114,7 @@ def test_insert_user_missing(tmp_db: Database, make_user: MakeUserFunc):
 def test_insert_comments(
     tmp_db: Database, comment: Comment, stored_comment: CommentRow
 ):
-    insert_subreddits(tmp_db, [comment])
+    upsert_subreddits(tmp_db, [comment])
     insert_users(tmp_db, [comment])
 
     comment_without_user = comment.copy()
@@ -143,7 +143,7 @@ def test_insert_comments(
 
 
 def test_update_comments(tmp_db: Database, comment: Comment, stored_comment):
-    insert_subreddits(tmp_db, [comment])
+    upsert_subreddits(tmp_db, [comment])
     insert_users(tmp_db, [comment])
     upsert_comments(tmp_db, [comment])
 
@@ -175,7 +175,7 @@ def test_insert_posts(
     no_user_post = post.copy()
     no_user_post.pop("author_fullname")
 
-    insert_subreddits(tmp_db, [post])
+    upsert_subreddits(tmp_db, [post])
     insert_users(tmp_db, [post])
 
     upsert_posts(tmp_db, [post, no_user_post])
