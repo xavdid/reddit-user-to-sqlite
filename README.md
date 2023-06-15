@@ -176,7 +176,7 @@ In your virtual environment, a simple `pytest` should run the unit test suite. Y
 
 > these notes are mostly for myself (or other contributors)
 
-0. ensure tests pass (`pytest`)
+0. ensure tests pass (`tox -p`)
 1. install release tooling (`pip install -e '.[release]'`)
 2. build the package (`python -m build`)
 3. upload the release (`python -m twine upload dist/*`)

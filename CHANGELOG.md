@@ -4,7 +4,7 @@ This project uses [SemVer](https://semver.org/) for versioning. Its public APIs,
 
 ## 0.4.0
 
-_released `TBD`_
+_released `2023-06-14`_
 
 - the `archive` command includes saved posts / comments by default (in their own table). Use the `--skip-saved` flag to opt out of this behavior ([#16](https://github.com/xavdid/reddit-user-to-sqlite/pull/16))
 - add support for Python 3.9, verified using `tox` ([#19](https://github.com/xavdid/reddit-user-to-sqlite/pull/19))
