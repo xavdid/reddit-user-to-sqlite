@@ -166,7 +166,11 @@ def test_cold_load_data_from_archive(
     stored_self_post,
     comment_info_response,
     post_info_response,
+    empty_file_at_path,
 ):
+    empty_file_at_path("saved_comments.csv")
+    empty_file_at_path("saved_posts.csv")
+
     mock_info_request("t1_a,t1_c", json=comment_info_response)
     mock_info_request("t3_d,t3_f", json=post_info_response)
 
@@ -204,6 +208,8 @@ def test_cold_load_comments_only_from_archive(
 ):
     mock_info_request("t1_a,t1_c", json=comment_info_response)
     empty_file_at_path("posts.csv")
+    empty_file_at_path("saved_comments.csv")
+    empty_file_at_path("saved_posts.csv")
 
     result = CliRunner().invoke(cli, ["archive", str(archive_dir), "--db", tmp_db_path])
     assert not result.exception
@@ -231,6 +237,9 @@ def test_cold_load_posts_only_from_archive(
     post_info_response,
 ):
     empty_file_at_path("comments.csv")
+    empty_file_at_path("saved_comments.csv")
+    empty_file_at_path("saved_posts.csv")
+
     mock_info_request("t3_d,t3_f", json=post_info_response)
 
     result = CliRunner().invoke(cli, ["archive", str(archive_dir), "--db", tmp_db_path])
@@ -259,7 +268,11 @@ def test_loads_data_from_both_sources_api_first(
     comment_info_response,
     post_info_response,
     write_archive_file: WriteArchiveFileFunc,
+    empty_file_at_path,
 ):
+    empty_file_at_path("saved_comments.csv")
+    empty_file_at_path("saved_posts.csv")
+
     mock_paged_request("comments", json=comment_response)
     mock_paged_request("submitted", json=self_post_response)
 
@@ -318,6 +331,7 @@ def test_loads_data_from_both_sources_archive_first(
     comment_info_response,
     post_info_response,
     write_archive_file: WriteArchiveFileFunc,
+    empty_file_at_path,
 ):
     # second pass
     mock_info_request("t1_a,t1_c", json=comment_info_response)
@@ -325,6 +339,9 @@ def test_loads_data_from_both_sources_archive_first(
 
     write_archive_file("comments.csv", ["id", "a", "c"])
     write_archive_file("posts.csv", ["id", "d", "f"])
+
+    empty_file_at_path("saved_comments.csv")
+    empty_file_at_path("saved_posts.csv")
 
     archive_result = CliRunner().invoke(
         cli, ["archive", str(archive_dir), "--db", tmp_db_path]
@@ -378,12 +395,15 @@ def test_adds_username_to_removed_posts_in_mixed_archive(
     all_comments_response,
     all_posts_response,
     stored_external_post,
+    empty_file_at_path,
 ):
     mock_info_request("t1_jj0ti6f,t1_c3sgfl4", json=all_comments_response)
     mock_info_request("t3_uypaav,t3_1f55rr,t3_qwer", json=all_posts_response)
 
     write_archive_file("comments.csv", ["id", "jj0ti6f", "c3sgfl4"])
     write_archive_file("posts.csv", ["id", "uypaav", "1f55rr", "qwer"])
+    empty_file_at_path("saved_comments.csv")
+    empty_file_at_path("saved_posts.csv")
 
     api_result = CliRunner().invoke(
         cli, ["archive", str(archive_dir), "--db", tmp_db_path]
@@ -419,6 +439,7 @@ def test_load_username_from_file(
     mock_user_request: MockUserFunc,
     write_archive_file: WriteArchiveFileFunc,
     removed_comment_response,
+    empty_file_at_path,
 ):
     mock_info_request("t1_c3sgfl4", json=removed_comment_response)
     mock_info_request("t3_1f55rr", json=removed_post_response)
@@ -427,6 +448,8 @@ def test_load_username_from_file(
 
     write_archive_file("comments.csv", ["id", "c3sgfl4"])
     write_archive_file("posts.csv", ["id", "1f55rr"])
+    empty_file_at_path("saved_comments.csv")
+    empty_file_at_path("saved_posts.csv")
 
     api_result = CliRunner().invoke(
         cli, ["archive", str(archive_dir), "--db", tmp_db_path]
@@ -468,6 +491,8 @@ def test_missing_username_entirely(
 
     write_archive_file("comments.csv", ["id", "c3sgfl4"])
     write_archive_file("posts.csv", ["id", "1f55rr"])
+    empty_file_at_path("saved_comments.csv")
+    empty_file_at_path("saved_posts.csv")
 
     api_result = CliRunner().invoke(
         cli, ["archive", str(archive_dir), "--db", tmp_db_path]
@@ -475,7 +500,7 @@ def test_missing_username_entirely(
     assert not api_result.exception, print(api_result.exception)
 
     assert "Unable to guess username" in api_result.output
-    assert "some posts will not be saved." in api_result.output
+    assert "some data will not be saved." in api_result.output
     assert "ignored for now" in api_result.output
 
     assert tmp_db.table_names() == ["subreddits"]
@@ -487,3 +512,110 @@ def test_missing_username_entirely(
     assert list(tmp_db["users"].rows) == []
     assert list(tmp_db["comments"].rows) == []
     assert list(tmp_db["posts"].rows) == []
+
+
+def test_load_saved_data(
+    tmp_db: Database,
+    tmp_db_path,
+    archive_dir,
+    empty_file_at_path,
+    mock_info_request: MockInfoFunc,
+    write_archive_file: WriteArchiveFileFunc,
+    all_comments_response,
+    stored_user,
+    deleted_user,
+    stored_removed_comment_placeholder_user,
+    stored_comment,
+    all_posts_response,
+    stored_self_post,
+    stored_removed_post_placeholder_user,
+    stored_external_post,
+):
+    empty_file_at_path("comments.csv")
+    empty_file_at_path("posts.csv")
+    empty_file_at_path("statistics.csv")
+    write_archive_file("saved_comments.csv", ["id", "jj0ti6f", "c3sgfl4"])
+    write_archive_file("saved_posts.csv", ["id", "uypaav", "1f55rr", "qwer"])
+
+    mock_info_request("t1_jj0ti6f,t1_c3sgfl4", json=all_comments_response)
+    mock_info_request("t3_uypaav,t3_1f55rr,t3_qwer", json=all_posts_response)
+
+    result = CliRunner().invoke(
+        cli,
+        ["archive", str(archive_dir), "--db", tmp_db_path],
+    )
+    assert not result.exception, result.exception
+    assert result.stdout  # not sure why it's in "out" not "err"
+    assert "saved 2 new comments" in result.stdout
+
+    assert {
+        "subreddits",
+        "users",
+        "saved_comments",
+        "saved_comments_fts",
+        "saved_posts",
+        "saved_posts_fts",
+    }.issubset(tmp_db.table_names())
+    assert "comments" not in tmp_db.table_names()
+    assert "posts" not in tmp_db.table_names()
+
+    assert list(tmp_db["subreddits"].rows) == [
+        {"id": "2t3ad", "name": "patientgamers", "type": "public"},
+        {"id": "2qm4e", "name": "askscience", "type": "public"},
+        {"id": "32u6q", "name": "KeybaseProofs", "type": "public"},
+        {"id": "2qh1e", "name": "videos", "type": "public"},
+    ]
+    # for some reason, .rows was returning rows inconsistently, so I ordered it
+    assert list(tmp_db["users"].rows_where(order_by="id")) == [
+        deleted_user,
+        stored_user,
+    ]
+    assert list(tmp_db["saved_comments"].rows) == [
+        stored_comment,
+        stored_removed_comment_placeholder_user,
+    ]
+    assert list(tmp_db["saved_posts"].rows) == [
+        stored_self_post,
+        stored_removed_post_placeholder_user,
+        stored_external_post,
+    ]
+
+
+def test_load_data_skip_saved(
+    tmp_db: Database,
+    tmp_db_path,
+    archive_dir,
+    empty_file_at_path,
+    write_archive_file: WriteArchiveFileFunc,
+):
+    empty_file_at_path("comments.csv")
+    empty_file_at_path("posts.csv")
+    empty_file_at_path("statistics.csv")
+    write_archive_file("saved_comments.csv", ["id", "jj0ti6f", "c3sgfl4"])
+    write_archive_file("saved_posts.csv", ["id", "uypaav", "1f55rr", "qwer"])
+
+    result = CliRunner().invoke(
+        cli,
+        ["archive", str(archive_dir), "--db", tmp_db_path, "--skip-saved"],
+    )
+    assert not result.exception, result.exception
+    assert result.stdout  # not sure why it's in "out" not "err"
+    assert "saved 0 new comments" in result.stdout
+
+    table_names = tmp_db.table_names()
+    for s in {
+        "subreddits",
+        "users",
+        "saved_comments",
+        "saved_comments_fts",
+        "saved_posts",
+        "saved_posts_fts",
+        "comments",
+        "posts",
+    }:
+        assert s not in table_names
+
+    assert list(tmp_db["subreddits"].rows) == []
+    assert list(tmp_db["users"].rows) == []
+    assert list(tmp_db["saved_comments"].rows) == []
+    assert list(tmp_db["saved_posts"].rows) == []

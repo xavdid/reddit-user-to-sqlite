@@ -42,3 +42,6 @@ reddit-user-to-sqlite = "reddit_user_to_sqlite.cli:cli"
 [build-system]
 requires = ["flit_core>=3.4"]
 build-backend = "flit_core.buildapi"
+
+# needed so the LSP performs typechecking
+[tool.pyright]

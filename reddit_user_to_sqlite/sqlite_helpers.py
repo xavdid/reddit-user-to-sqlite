@@ -1,7 +1,8 @@
-from typing import Callable, Iterable, TypedDict, TypeVar
+from typing import Callable, Iterable, Optional, Sequence, TypedDict, TypeVar
 
 from sqlite_utils import Database
 
+from reddit_user_to_sqlite.csv_helpers import PrefixType, build_table_name
 from reddit_user_to_sqlite.reddit_api import (
     Comment,
     Post,
@@ -42,23 +43,31 @@ class UserRow(TypedDict):
     username: str
 
 
-def item_to_user_row(item: UserFragment) -> dict[str, str] | None:
+def item_to_user_row(item: UserFragment) -> UserRow | None:
     if "author_fullname" in item:
         return {"id": item["author_fullname"][3:], "username": item["author"]}
 
 
-def insert_user(db: Database, user: UserFragment):
-    if user_row := item_to_user_row(user):
-        # don't really want to upsert, but I get errors from sqlite when I `insert` after an insert_all
-        # https://github.com/simonw/sqlite-utils/issues/554
-        db["users"].upsert(  # type: ignore
-            user_row,
-            # ignore any write error
-            # ignore=True,
-            # only relevant if creating the table
-            pk="id",  # type: ignore
-            not_null=["id", "username"],  # type: ignore
-        )
+def insert_users(db: Database, users: Sequence[UserFragment]):
+    existing_users = {u["id"] for u in db["users"].rows}
+
+    unique_new_users = {
+        # needs to be hashable so it's deduped
+        (u["id"], u["username"])
+        for user in users
+        if (u := item_to_user_row(user)) and u["id"] not in existing_users
+    }
+
+    new_users = [{"id": user[0], "username": user[1]} for user in unique_new_users]
+
+    db["users"].insert_all(  # type: ignore
+        new_users,
+        # ignore any write error
+        # ignore=True,
+        # only relevant if creating the table
+        pk="id",  # type: ignore
+        not_null=["id", "username"],  # type: ignore
+    )
 
 
 class CommentRow(TypedDict):
@@ -98,9 +107,11 @@ def apply_and_filter(filterer: Callable[[T], U | None], items: Iterable[T]) -> l
     return [c for c in map(filterer, items) if c]
 
 
-def upsert_comments(db: Database, comments: Iterable[Comment]) -> int:
+def upsert_comments(
+    db: Database, comments: Iterable[Comment], table_prefix: Optional[PrefixType] = None
+) -> int:
     comment_rows = apply_and_filter(comment_to_comment_row, comments)
-    db["comments"].upsert_all(  # type: ignore
+    db[build_table_name("comments", table_prefix)].upsert_all(  # type: ignore
         comment_rows,
         pk="id",  # type: ignore
         # update the schema - needed if user does archive first
@@ -163,9 +174,11 @@ def post_to_post_row(post: Post) -> PostRow | None:
     }
 
 
-def upsert_posts(db: Database, posts: Iterable[Post]) -> int:
+def upsert_posts(
+    db: Database, posts: Iterable[Post], table_prefix: Optional[PrefixType] = None
+) -> int:
     post_rows = apply_and_filter(post_to_post_row, posts)
-    db["posts"].insert_all(  # type: ignore
+    db[build_table_name("posts", table_prefix)].insert_all(  # type: ignore
         post_rows,
         upsert=True,
         pk="id",  # type: ignore
@@ -186,9 +199,16 @@ def upsert_posts(db: Database, posts: Iterable[Post]) -> int:
     return len(post_rows)
 
 
+FTS_INSTRUCTIONS: list[tuple[str, list[str]]] = [
+    ("comments", ["text"]),
+    ("posts", ["title", "text"]),
+    ("saved_comments", ["text"]),
+    ("saved_posts", ["title", "text"]),
+]
+
+
 def ensure_fts(db: Database):
     table_names = set(db.table_names())
-    if "comments" in table_names and "comments_fts" not in table_names:
-        db["comments"].enable_fts(["text"], create_triggers=True)
-    if "posts" in table_names and "posts_fts" not in table_names:
-        db["posts"].enable_fts(["title", "text"], create_triggers=True)
+    for table, columns in FTS_INSTRUCTIONS:
+        if table in table_names and f"{table}_fts" not in table_names:
+            db[table].enable_fts(columns, create_triggers=True)

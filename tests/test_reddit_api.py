@@ -5,11 +5,11 @@ import pytest
 from reddit_user_to_sqlite.reddit_api import (
     SuccessResponse,
     _raise_reddit_error,
+    add_missing_user_fragment,
     get_user_id,
     load_comments_for_user,
     load_info,
     load_posts_for_user,
-    add_missing_user_fragment,
 )
 from tests.conftest import MockInfoFunc, MockPagedFunc, MockUserFunc
 

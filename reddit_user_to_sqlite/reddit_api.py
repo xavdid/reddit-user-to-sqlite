@@ -1,17 +1,9 @@
-from typing_extensions import NotRequired
-from typing import (
-    Any,
-    Literal,
-    Optional,
-    Sequence,
-    TypedDict,
-    TypeVar,
-    cast,
-    final,
-)
+import os
+from typing import Any, Literal, Optional, Sequence, TypedDict, TypeVar, cast, final
 
 import requests
 from tqdm import tqdm, trange
+from typing_extensions import NotRequired
 
 from reddit_user_to_sqlite.helpers import batched
 
@@ -182,7 +174,9 @@ def load_posts_for_user(username: str) -> list[Post]:
 def load_info(resources: Sequence[str]) -> list[Comment | Post]:
     result = []
 
-    for batch in batched(tqdm(resources), PAGE_SIZE):
+    for batch in batched(
+        tqdm(resources, disable=bool(os.environ.get("DISABLE_PROGRESS"))), PAGE_SIZE
+    ):
         response = _call_reddit_api(
             "https://www.reddit.com/api/info.json", params={"id": ",".join(batch)}
         )

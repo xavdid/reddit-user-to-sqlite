@@ -1,16 +1,21 @@
-from typing import Optional
+from typing import Callable, Optional
 
 import pytest
 from pytest import FixtureRequest
 from sqlite_utils import Database
 from sqlite_utils.db import ForeignKey, NotFoundError
 
-from reddit_user_to_sqlite.reddit_api import Comment, SubredditFragment, UserFragment
+from reddit_user_to_sqlite.reddit_api import (
+    Comment,
+    Post,
+    SubredditFragment,
+    UserFragment,
+)
 from reddit_user_to_sqlite.sqlite_helpers import (
     CommentRow,
     comment_to_comment_row,
     insert_subreddits,
-    insert_user,
+    insert_users,
     item_to_subreddit_row,
     item_to_user_row,
     post_to_post_row,
@@ -32,8 +37,11 @@ def make_sr():
     return make_subreddit
 
 
+MakeUserFunc = Callable[[str], UserFragment]
+
+
 @pytest.fixture
-def make_user():
+def make_user() -> MakeUserFunc:
     def _make_user(name: str, id_: Optional[str] = None) -> UserFragment:
         return {"author_fullname": f"t2_{id_ or name[::-1]}", "author": name}
 
@@ -86,8 +94,8 @@ def test_repeat_subs_ignored(tmp_db: Database, make_sr):
     ]
 
 
-def test_insert_user(tmp_db: Database, make_user):
-    insert_user(tmp_db, make_user("xavdid"))
+def test_insert_user(tmp_db: Database, make_user: MakeUserFunc):
+    insert_users(tmp_db, [make_user("xavdid")])
 
     assert "users" in tmp_db.table_names()
     assert list(tmp_db["users"].rows) == [
@@ -95,17 +103,19 @@ def test_insert_user(tmp_db: Database, make_user):
     ]
 
 
-def test_insert_user_missing(tmp_db: Database, make_user):
+def test_insert_user_missing(tmp_db: Database, make_user: MakeUserFunc):
     user = make_user("xavdid")
     user.pop("author_fullname")
-    insert_user(tmp_db, user)
+    insert_users(tmp_db, [user])
 
     assert "users" not in tmp_db.table_names()
 
 
-def test_insert_comments(tmp_db: Database, comment, stored_comment: CommentRow):
+def test_insert_comments(
+    tmp_db: Database, comment: Comment, stored_comment: CommentRow
+):
     insert_subreddits(tmp_db, [comment])
-    insert_user(tmp_db, comment)
+    insert_users(tmp_db, [comment])
 
     comment_without_user = comment.copy()
     comment.pop("author_fullname")
@@ -134,7 +144,7 @@ def test_insert_comments(tmp_db: Database, comment, stored_comment: CommentRow):
 
 def test_update_comments(tmp_db: Database, comment: Comment, stored_comment):
     insert_subreddits(tmp_db, [comment])
-    insert_user(tmp_db, comment)
+    insert_users(tmp_db, [comment])
     upsert_comments(tmp_db, [comment])
 
     assert list(tmp_db["comments"].rows) == [stored_comment]
@@ -159,14 +169,14 @@ def test_update_comments(tmp_db: Database, comment: Comment, stored_comment):
 def test_insert_posts(
     tmp_db: Database, request: FixtureRequest, post_type: str, stored_post_type: str
 ):
-    post = request.getfixturevalue(post_type)
+    post: Post = request.getfixturevalue(post_type)
     stored_post = request.getfixturevalue(stored_post_type)
 
     no_user_post = post.copy()
     no_user_post.pop("author_fullname")
 
     insert_subreddits(tmp_db, [post])
-    insert_user(tmp_db, post)
+    insert_users(tmp_db, [post])
 
     upsert_posts(tmp_db, [post, no_user_post])
 

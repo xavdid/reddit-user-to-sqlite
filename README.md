@@ -42,6 +42,7 @@ Reads the output of a [Reddit GDPR archive](https://support.reddithelp.com/hc/en
 
 1. `archive_path`: the path to the (unzipped) archive directory on your machine. Don't rename/move the files that Reddit gives you.
 2. (optional) `--db`: the path to a sqlite file, which will be created or updated as needed. Defaults to `reddit.db`.
+3. (optional) `--skip-saved`: a flag for skipping the inclusion of loading saved comments/posts from the archive.
 
 ## Viewing Data
 
