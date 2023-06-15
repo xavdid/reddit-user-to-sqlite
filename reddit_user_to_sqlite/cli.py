@@ -22,10 +22,10 @@ from reddit_user_to_sqlite.reddit_api import (
 )
 from reddit_user_to_sqlite.sqlite_helpers import (
     ensure_fts,
-    insert_subreddits,
     insert_users,
     upsert_comments,
     upsert_posts,
+    upsert_subreddits,
 )
 
 
@@ -54,7 +54,7 @@ def _save_items(
         return 0
 
     insert_users(db, items)
-    insert_subreddits(db, items)
+    upsert_subreddits(db, items)
     return upsert_func(db, items, table_prefix)
 
 

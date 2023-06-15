@@ -27,7 +27,8 @@ def item_to_subreddit_row(item: SubredditFragment) -> SubredditRow:
     }
 
 
-def insert_subreddits(db: Database, subreddits: Iterable[SubredditFragment]):
+def upsert_subreddits(db: Database, subreddits: Iterable[SubredditFragment]):
+    # upserts are actually important here, since subs are going private/public a lot
     # https://github.com/simonw/sqlite-utils/issues/554
     db["subreddits"].upsert_all(  # type: ignore
         map(item_to_subreddit_row, subreddits),
@@ -80,6 +81,7 @@ class CommentRow(TypedDict):
     subreddit: str
     permalink: str
     controversiality: int
+    num_awards: int
 
 
 def comment_to_comment_row(comment: Comment) -> CommentRow | None:
@@ -96,6 +98,7 @@ def comment_to_comment_row(comment: Comment) -> CommentRow | None:
         "permalink": f'https://old.reddit.com{comment["permalink"]}?context=10',
         "is_submitter": int(comment["is_submitter"]),
         "controversiality": comment["controversiality"],
+        "num_awards": comment["total_awards_received"],
     }
 
 

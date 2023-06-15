@@ -56,7 +56,7 @@ def comment():
         "ups": 1,
         "num_reports": None,
         "author_flair_type": "text",
-        "total_awards_received": 0,
+        "total_awards_received": 3,
         "subreddit": "patientgamers",
         "link_author": "DefinitionWest",
         "likes": None,
@@ -236,6 +236,7 @@ def stored_comment() -> CommentRow:
         "text": "Such a great game to pick up for a run every couple of months. Every time I think I'm done, it pulls be back in.",
         "timestamp": 1683327131,
         "user": "np8mb41h",
+        "num_awards": 3,
     }
 
 
@@ -252,6 +253,7 @@ def stored_removed_comment() -> CommentRow:
         "timestamp": 1329550785,
         # manually added this - if it's stored, I must have found a user
         "user": "np8mb41h",
+        "num_awards": 0,
     }
 
 
@@ -267,6 +269,7 @@ def stored_removed_comment_placeholder_user() -> CommentRow:
         "text": "[removed]",
         "timestamp": 1329550785,
         "user": "1234567",
+        "num_awards": 0,
     }
 
 
