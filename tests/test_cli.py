@@ -23,7 +23,6 @@ def test_load_data_for_user(
     stored_comment,
     stored_self_post,
     stored_external_post,
-    # stored_removed_post,
     stored_user,
     all_comments_response,
 ):
@@ -54,7 +53,6 @@ def test_load_data_for_user(
     assert list(tmp_db["comments"].rows) == [stored_comment]
     assert list(tmp_db["posts"].rows) == [
         stored_self_post,
-        # stored_removed_post, # posts without authors are skipped
         stored_external_post,
     ]
 

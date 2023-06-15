@@ -44,7 +44,7 @@ class UserRow(TypedDict):
     username: str
 
 
-def item_to_user_row(item: UserFragment) -> UserRow | None:
+def item_to_user_row(item: UserFragment) -> Optional[UserRow]:
     if "author_fullname" in item:
         return {"id": item["author_fullname"][3:], "username": item["author"]}
 
@@ -84,7 +84,7 @@ class CommentRow(TypedDict):
     num_awards: int
 
 
-def comment_to_comment_row(comment: Comment) -> CommentRow | None:
+def comment_to_comment_row(comment: Comment) -> Optional[CommentRow]:
     if "author_fullname" not in comment:
         return
 
@@ -106,7 +106,9 @@ T = TypeVar("T")
 U = TypeVar("U")
 
 
-def apply_and_filter(filterer: Callable[[T], U | None], items: Iterable[T]) -> list[U]:
+def apply_and_filter(
+    filterer: Callable[[T], Optional[U]], items: Iterable[T]
+) -> list[U]:
     return [c for c in map(filterer, items) if c]
 
 
@@ -155,7 +157,7 @@ class PostRow(TypedDict):
     is_removed: int
 
 
-def post_to_post_row(post: Post) -> PostRow | None:
+def post_to_post_row(post: Post) -> Optional[PostRow]:
     if "author_fullname" not in post:
         return
 
