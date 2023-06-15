@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Literal, Optional, Protocol
+from typing import Any, Literal, Optional, Protocol, Union
 
 import pytest
 import responses
@@ -651,7 +651,7 @@ class MockPagedFunc(Protocol):
         self,
         resource: Literal["comments", "submitted"],
         json: Any,
-        params: Optional[dict[str, str | int]] = None,
+        params: Optional[dict[str, Union[str, int]]] = None,
     ) -> BaseResponse:
         ...
 
@@ -665,7 +665,7 @@ def mock_paged_request(mock: RequestsMock) -> MockPagedFunc:
     def _mock_request(
         resource: Literal["comments", "submitted"],
         json: Any,
-        params: Optional[dict[str, str | int]] = None,
+        params: Optional[dict[str, Union[str, int]]] = None,
     ):
         params = {"limit": 100, "raw_json": 1, **(params or {})}
 

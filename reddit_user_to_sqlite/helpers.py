@@ -1,6 +1,6 @@
 import re
 from itertools import islice
-from typing import Iterable, TypeVar
+from typing import Iterable, Optional, TypeVar
 
 T = TypeVar("T")
 
@@ -26,7 +26,7 @@ def clean_username(username: str) -> str:
     return username
 
 
-def find_user_details_from_items(items) -> tuple[str, str] | None:
+def find_user_details_from_items(items) -> Optional[tuple[str, str]]:
     """
     Returns a 2-tuple of prefixed user_id and username if found, otherwise None
     """

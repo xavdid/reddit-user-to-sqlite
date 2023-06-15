@@ -46,7 +46,7 @@ def load_unsaved_ids_from_file(
         ]
 
 
-def get_username_from_archive(archive_path: Path) -> str | None:
+def get_username_from_archive(archive_path: Path) -> Optional[str]:
     with open(validate_and_build_path(archive_path, "statistics")) as stat_rows:
         try:
             return next(

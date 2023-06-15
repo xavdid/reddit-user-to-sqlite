@@ -1,9 +1,22 @@
 import os
-from typing import Any, Literal, Optional, Sequence, TypedDict, TypeVar, cast, final
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+    Optional,
+    Sequence,
+    TypedDict,
+    TypeVar,
+    Union,
+    cast,
+    final,
+)
+
+if TYPE_CHECKING:
+    from typing import NotRequired
 
 import requests
 from tqdm import tqdm, trange
-from typing_extensions import NotRequired
 
 from reddit_user_to_sqlite.helpers import batched
 
@@ -24,7 +37,7 @@ class UserFragment(TypedDict):
     # comment author username
     author: str
     # comment author prefixed id
-    author_fullname: NotRequired[str]
+    author_fullname: "NotRequired[str]"
 
 
 class Comment(SubredditFragment, UserFragment):
@@ -97,7 +110,7 @@ class Post(SubredditFragment, UserFragment):
 @final
 class ResourceWrapper(TypedDict):
     kind: str
-    data: Comment | Post
+    data: Union[Comment, Post]
 
 
 @final
@@ -133,7 +146,9 @@ def _raise_reddit_error(response):
         )
 
 
-def _call_reddit_api(url: str, params: dict[str, Any] | None = None) -> SuccessResponse:
+def _call_reddit_api(
+    url: str, params: Optional[dict[str, Any]] = None
+) -> SuccessResponse:
     response = requests.get(
         url,
         {"limit": PAGE_SIZE, "raw_json": 1, **(params or {})},
@@ -171,7 +186,7 @@ def load_posts_for_user(username: str) -> list[Post]:
     return _load_paged_resource("submitted", username)
 
 
-def load_info(resources: Sequence[str]) -> list[Comment | Post]:
+def load_info(resources: Sequence[str]) -> list[Union[Comment, Post]]:
     result = []
 
     for batch in batched(
