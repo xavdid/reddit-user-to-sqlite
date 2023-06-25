@@ -38,7 +38,9 @@ def load_unsaved_ids_from_file(
     # we save each file into a matching table
     saved_ids = {row["id"] for row in db[filename].rows}
 
-    with open(validate_and_build_path(archive_path, filename)) as archive_rows:
+    with open(
+        validate_and_build_path(archive_path, filename), encoding="utf-8"
+    ) as archive_rows:
         return [
             f'{FULLNAME_PREFIX[item_type]}_{c["id"]}'
             for c in DictReader(archive_rows)
