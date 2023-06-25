@@ -2,6 +2,12 @@
 
 This project uses [SemVer](https://semver.org/) for versioning. Its public APIs, runtime support, and documented file locations won't change incompatibly outside of major versions (once version 1.0.0 has been released). There may be breaking schema changes in minor releases before 1.0.0 and will be noted in these release notes.
 
+## 0.4.1
+
+_released `2023-06-25`_
+
+- specify `utf-8` as the default character encoding, improving windows compatibility (fixes [#10](https://github.com/xavdid/reddit-user-to-sqlite/issues/10))
+
 ## 0.4.0
 
 _released `2023-06-14`_
