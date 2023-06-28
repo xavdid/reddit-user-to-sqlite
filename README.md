@@ -60,7 +60,7 @@ Then, add the recommended plugins (for rendering timestamps and markdown):
 pipx inject datasette datasette-render-markdown datasette-render-timestamps
 ```
 
-Finally, create a `metadata.json` file with the following:
+Finally, create a `metadata.json` file next to your `reddit.db` with the following:
 
 ```json
 {
