@@ -176,10 +176,5 @@ In your virtual environment, a simple `pytest` should run the unit test suite. Y
 
 > these notes are mostly for myself (or other contributors)
 
-0. ensure tests pass (`tox -p`)
-1. install release tooling (`pip install -e '.[release]'`)
-2. build the package (`python -m build`)
-3. upload the release (`python -m twine upload dist/*`)
-   1. give your username as `__token__`
-   2. give your password as your stored API key
-   3. If you're getting invalid password, verify that `~/.pypirc` is empty
+1. Run `just release` while your venv is active
+2. paste the stored API key (If you're getting invalid password, verify that `~/.pypirc` is empty)
