@@ -178,3 +178,5 @@ pyrightconfig.json
 *.db
 config.json
 metadata.json
+
+launch.json
