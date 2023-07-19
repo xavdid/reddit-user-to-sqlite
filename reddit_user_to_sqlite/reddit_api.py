@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 import requests
 import logging
+import click
 from tqdm import tqdm, trange
 
 from reddit_user_to_sqlite.helpers import batched
@@ -196,7 +197,7 @@ def load_info(resources: Sequence[str]) -> list[Union[Comment, Post]]:
     result = []
     slowMode = len(resources) > 10000
     if slowMode:
-        print("Large data pull detected, enabling slow mode to prevent API rate limiting")
+        click.echo("Large data pull detected, enabling slow mode to prevent API rate limiting")
     for batch in batched(
         tqdm(resources, disable=bool(os.environ.get("DISABLE_PROGRESS"))), PAGE_SIZE
     ):
@@ -213,7 +214,7 @@ def load_info(resources: Sequence[str]) -> list[Union[Comment, Post]]:
                logging.exception(e)
                if i == MAX_RETRIES - 1:
                    # if we're out of retries, return what we have
-                   print("Max retries exceeded, returning partial result")
+                   click.echo("Max retries exceeded, returning partial result")
                    return result
                # sleep tops out at 256 seconds with MAX_RETRIES = 8
                time.sleep(2 ** i)
