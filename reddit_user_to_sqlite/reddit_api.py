@@ -194,7 +194,9 @@ def load_posts_for_user(username: str) -> list[Post]:
 
 def load_info(resources: Sequence[str]) -> list[Union[Comment, Post]]:
     result = []
-
+    slowMode = len(resources) > 10000
+    if slowMode:
+        print("Large data pull detected, enabling slow mode to prevent API rate limiting")
     for batch in batched(
         tqdm(resources, disable=bool(os.environ.get("DISABLE_PROGRESS"))), PAGE_SIZE
     ):
@@ -217,8 +219,9 @@ def load_info(resources: Sequence[str]) -> list[Union[Comment, Post]]:
                time.sleep(2 ** i)
 
         result += [c["data"] for c in response["data"]["children"]]
-        # sleep to avoid rate limiting on free API
-        time.sleep(API_DELAY)
+        if slowMode:
+            # sleep to avoid rate limiting on free API for large requests.  Rate limiting kicks in at 15k requests
+            time.sleep(API_DELAY)
 
     return result
 
