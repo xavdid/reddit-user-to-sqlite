@@ -253,7 +253,3 @@ def add_missing_user_fragment(
         else i
         for i in items
     ]
-
-
-
-
