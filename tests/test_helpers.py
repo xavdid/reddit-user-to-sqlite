@@ -36,4 +36,4 @@ def test_find_user_details_from_items():
 
 
 def test_fail_to_find_user_details_from_items():
-    assert find_user_details_from_items([{"asdf": 1}, {"author": "xavdid"}]) == None
+    assert find_user_details_from_items([{"asdf": 1}, {"author": "xavdid"}]) is None

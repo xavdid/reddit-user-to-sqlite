@@ -173,7 +173,6 @@ def post_to_post_row(post: Post) -> Optional[PostRow]:
         "subreddit": post["subreddit_id"][3:],
         "permalink": f'https://old.reddit.com{post["permalink"]}',
         "upvote_ratio": post["upvote_ratio"],
-        "score": post["score"],
         "num_awards": post["total_awards_received"],
         "is_removed": int(post["selftext"] == "[removed]"),
     }

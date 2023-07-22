@@ -103,7 +103,7 @@ def test_load_info_empty(mock_info_request: MockInfoFunc, empty_response):
 
 
 def test_raise_reddit_error():
-    assert _raise_reddit_error({}) == None  # no raise, no return
+    assert _raise_reddit_error({}) is None  # no raise, no return
 
     with pytest.raises(ValueError) as err:
         _raise_reddit_error({"error": 123, "message": "cool"})
