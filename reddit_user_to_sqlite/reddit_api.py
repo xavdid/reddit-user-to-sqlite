@@ -1,4 +1,5 @@
 import os
+import time
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -16,12 +17,18 @@ if TYPE_CHECKING:
     from typing import NotRequired
 
 import requests
+import logging
+import click
 from tqdm import tqdm, trange
 
 from reddit_user_to_sqlite.helpers import batched
 
 USER_AGENT = "reddit-to-sqlite"
 
+# per https://www.reddit.com/r/redditdev/comments/14nbw6g/updated_rate_limits_going_into_effect_over_the/
+# free api limited at 10 queries per minute, or 6 seconds between requests
+API_DELAY = 6
+MAX_RETRIES = 8 
 
 class SubredditFragment(TypedDict):
     ## SUBREDDIT
@@ -188,14 +195,34 @@ def load_posts_for_user(username: str) -> list[Post]:
 
 def load_info(resources: Sequence[str]) -> list[Union[Comment, Post]]:
     result = []
-
+    slowMode = len(resources) > 10000
+    if slowMode:
+        click.echo("Large data pull detected, enabling slow mode to prevent API rate limiting")
     for batch in batched(
         tqdm(resources, disable=bool(os.environ.get("DISABLE_PROGRESS"))), PAGE_SIZE
     ):
-        response = _call_reddit_api(
-            "https://www.reddit.com/api/info.json", params={"id": ",".join(batch)}
-        )
+        # API calls are flakey, so be prepared for failure
+        for i in range(MAX_RETRIES):
+            try:
+                response = _call_reddit_api(
+                    "https://www.reddit.com/api/info.json", params={"id": ",".join(batch)}
+                )
+                # break retry loop if successful
+                break
+            except Exception as e:
+                # otherwise log the error and try again.
+               logging.exception(e)
+               if i == MAX_RETRIES - 1:
+                   # if we're out of retries, return what we have
+                   click.echo("Max retries exceeded, returning partial result")
+                   return result
+               # sleep tops out at 256 seconds with MAX_RETRIES = 8
+               time.sleep(2 ** i)
+
         result += [c["data"] for c in response["data"]["children"]]
+        if slowMode:
+            # sleep to avoid rate limiting on free API for large requests.  Rate limiting kicks in at 15k requests
+            time.sleep(API_DELAY)
 
     return result
 
