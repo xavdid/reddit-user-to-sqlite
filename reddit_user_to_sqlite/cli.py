@@ -75,13 +75,13 @@ def load_data_from_files(
     new_comment_ids = load_unsaved_ids_from_file(
         db, archive_path, "comments", prefix=tables_prefix
     )
-    click.echo("\nFetching info about your comments")
+    click.echo(f"\nFetching info about {'your' if own_data else 'saved'} comments")
     comments = cast(list[Comment], load_info(new_comment_ids))
 
     post_ids = load_unsaved_ids_from_file(
         db, archive_path, "posts", prefix=tables_prefix
     )
-    click.echo("\nFetching info about your posts")
+    click.echo(f"\nFetching info about {'your' if own_data else 'saved'} posts")
     posts = cast(list[Post], load_info(post_ids))
 
     username = None

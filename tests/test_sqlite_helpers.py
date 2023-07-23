@@ -238,7 +238,7 @@ def test_comment_to_comment_row(comment, stored_comment):
 
 def test_comment_to_comment_row_missing_user(comment):
     comment.pop("author_fullname")
-    assert comment_to_comment_row(comment) == None
+    assert comment_to_comment_row(comment) is None
 
 
 def test_post_to_post_row(self_post, stored_self_post):
@@ -247,4 +247,4 @@ def test_post_to_post_row(self_post, stored_self_post):
 
 def test_post_to_post_row_missing_user(self_post):
     self_post.pop("author_fullname")
-    assert post_to_post_row(self_post) == None
+    assert post_to_post_row(self_post) is None

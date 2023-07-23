@@ -1,5 +1,4 @@
 import os
-import time
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -13,22 +12,17 @@ from typing import (
     final,
 )
 
-if TYPE_CHECKING:
-    from typing import NotRequired
-
-import requests
-import logging
 import click
+import requests
 from tqdm import tqdm, trange
 
 from reddit_user_to_sqlite.helpers import batched
 
-USER_AGENT = "reddit-to-sqlite"
+if TYPE_CHECKING:
+    from typing import NotRequired
 
-# per https://www.reddit.com/r/redditdev/comments/14nbw6g/updated_rate_limits_going_into_effect_over_the/
-# free api limited at 10 queries per minute, or 6 seconds between requests
-API_DELAY = 6
-MAX_RETRIES = 8 
+USER_AGENT = "reddit-user-to-sqlite"
+
 
 class SubredditFragment(TypedDict):
     ## SUBREDDIT
@@ -120,8 +114,12 @@ class ResourceWrapper(TypedDict):
     data: Union[Comment, Post]
 
 
+class SuccessResponse(TypedDict):
+    kind: Literal["Listing", "t2"]
+
+
 @final
-class ResponseBody(TypedDict):
+class PagedResponseBody(TypedDict):
     before: Optional[str]
     after: Optional[str]
     modhash: str
@@ -131,9 +129,18 @@ class ResponseBody(TypedDict):
 
 
 @final
-class SuccessResponse(TypedDict):
-    data: ResponseBody
-    kind: Literal["Listing"]
+class PagedResponse(SuccessResponse):
+    data: PagedResponseBody
+
+
+@final
+class UserData(TypedDict):
+    id: str
+
+
+@final
+class UserResponse(SuccessResponse):
+    data: UserData
 
 
 @final
@@ -142,44 +149,85 @@ class ErorrResponse(TypedDict):
     error: int
 
 
-# max page size is 100
+ErrorHeaders = TypedDict(
+    "ErrorHeaders",
+    {
+        "x-ratelimit-used": str,
+        "x-ratelimit-remaining": str,
+        "x-ratelimit-reset": str,
+    },
+)
+
+# max API page size is 100
 PAGE_SIZE = 100
 
 
-def _raise_reddit_error(response):
-    if "error" in response:
+class RedditRateLimitException(Exception):
+    """
+    more info: https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki
+    """
+
+    def __init__(self, headers: ErrorHeaders) -> None:
+        super().__init__("Rate limited by Reddit")
+
+        self.used = int(headers["x-ratelimit-used"])
+        self.remaining = int(headers["x-ratelimit-remaining"])
+        self.window_total = self.used + self.remaining
+        self.reset_after_seconds = int(headers["x-ratelimit-reset"])
+
+    @property
+    def stats(self) -> str:
+        return f"Used {self.used}/{self.window_total} requests (resets in {self.reset_after_seconds} seconds)"
+
+
+def _unwrap_response_and_raise(response: requests.Response):
+    result = response.json()
+
+    if "error" in result:
+        if result["error"] == 429:
+            raise RedditRateLimitException(cast(ErrorHeaders, response.headers))
+
         raise ValueError(
-            f'Received API error from Reddit (code {response["error"]}): {response["message"]}'
+            f'Received API error from Reddit (code {result["error"]}): {result["message"]}'
         )
 
+    return result
 
-def _call_reddit_api(
-    url: str, params: Optional[dict[str, Any]] = None
-) -> SuccessResponse:
-    response = requests.get(
-        url,
-        {"limit": PAGE_SIZE, "raw_json": 1, **(params or {})},
-        headers={"user-agent": USER_AGENT},
-    ).json()
 
-    _raise_reddit_error(response)
+def _call_reddit_api(url: str, params: Optional[dict[str, Any]] = None):
+    return _unwrap_response_and_raise(
+        requests.get(
+            url,
+            {"raw_json": 1, "limit": PAGE_SIZE, **(params or {})},  # type: ignore
+            headers={"user-agent": USER_AGENT},
+        )
+    )
 
-    return response
+
+def _rate_limit_message(e: RedditRateLimitException) -> str:
+    return f"Rate limited by reddit; try again in {e.reset_after_seconds} seconds. Until then, saving what we have"
 
 
 def _load_paged_resource(resource: Literal["comments", "submitted"], username: str):
+    """
+    handles paging logic for arbitrary-length queries with an "after" param
+    """
     result = []
     after = None
     # max number of pages we can fetch
     for _ in trange(10):
-        response = _call_reddit_api(
-            f"https://www.reddit.com/user/{username}/{resource}.json",
-            params={"after": after},
-        )
-        result += [c["data"] for c in response["data"]["children"]]
-        after = response["data"]["after"]
+        try:
+            response: PagedResponse = _call_reddit_api(
+                f"https://www.reddit.com/user/{username}/{resource}.json",
+                params={"after": after},
+            )
 
-        if len(response["data"]["children"]) < PAGE_SIZE:
+            result += [c["data"] for c in response["data"]["children"]]
+            after = response["data"]["after"]
+            if len(response["data"]["children"]) < PAGE_SIZE:
+                break
+        except RedditRateLimitException as e:
+            click.echo(_rate_limit_message(e), err=True)
             break
 
     return result
@@ -194,46 +242,30 @@ def load_posts_for_user(username: str) -> list[Post]:
 
 
 def load_info(resources: Sequence[str]) -> list[Union[Comment, Post]]:
+    """
+    calls the `/info` endpoint to fetch data about a sequence of resources that include the type prefix
+    """
     result = []
-    slowMode = len(resources) > 10000
-    if slowMode:
-        click.echo("Large data pull detected, enabling slow mode to prevent API rate limiting")
     for batch in batched(
         tqdm(resources, disable=bool(os.environ.get("DISABLE_PROGRESS"))), PAGE_SIZE
     ):
-        # API calls are flakey, so be prepared for failure
-        for i in range(MAX_RETRIES):
-            try:
-                response = _call_reddit_api(
-                    "https://www.reddit.com/api/info.json", params={"id": ",".join(batch)}
-                )
-                # break retry loop if successful
-                break
-            except Exception as e:
-                # otherwise log the error and try again.
-               logging.exception(e)
-               if i == MAX_RETRIES - 1:
-                   # if we're out of retries, return what we have
-                   click.echo("Max retries exceeded, returning partial result")
-                   return result
-               # sleep tops out at 256 seconds with MAX_RETRIES = 8
-               time.sleep(2 ** i)
-
-        result += [c["data"] for c in response["data"]["children"]]
-        if slowMode:
-            # sleep to avoid rate limiting on free API for large requests.  Rate limiting kicks in at 15k requests
-            time.sleep(API_DELAY)
+        try:
+            response: PagedResponse = _call_reddit_api(
+                "https://www.reddit.com/api/info.json",
+                params={"id": ",".join(batch)},
+            )
+            result += [c["data"] for c in response["data"]["children"]]
+        except RedditRateLimitException as e:
+            click.echo(_rate_limit_message(e), err=True)
+            break
 
     return result
 
 
 def get_user_id(username: str) -> str:
-    response = requests.get(
-        f"https://www.reddit.com/user/{username}/about.json",
-        headers={"user-agent": USER_AGENT},
-    ).json()
-
-    _raise_reddit_error(response)
+    response: UserResponse = _call_reddit_api(
+        f"https://www.reddit.com/user/{username}/about.json"
+    )
 
     return response["data"]["id"]
 

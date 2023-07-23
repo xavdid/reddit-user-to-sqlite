@@ -119,7 +119,7 @@ def test_get_username_from_archive(archive_dir):
 
 def test_get_username_from_archive_no_name(archive_dir: Path):
     (archive_dir / "statistics.csv").touch()
-    assert get_username_from_archive(archive_dir) == None
+    assert get_username_from_archive(archive_dir) is None
 
 
 def test_get_username_from_archive_missing_file(archive_dir):

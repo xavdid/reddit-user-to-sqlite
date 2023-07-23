@@ -2,6 +2,12 @@
 
 This project uses [SemVer](https://semver.org/) for versioning. Its public APIs, runtime support, and documented file locations won't change incompatibly outside of major versions (once version 1.0.0 has been released). There may be breaking schema changes in minor releases before 1.0.0 and will be noted in these release notes.
 
+## 0.4.2
+
+_released `2023-07-22`_
+
+- handle [new rate limiting](https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki) more gracefully (fixes [#23](https://github.com/xavdid/reddit-user-to-sqlite/issues/23) via [#24](https://github.com/xavdid/reddit-user-to-sqlite/pull/24) (by [@piyh](https://github.com/piyh)) and [#25](https://github.com/xavdid/reddit-user-to-sqlite/pull/25))
+
 ## 0.4.1
 
 _released `2023-06-25`_
@@ -21,7 +27,7 @@ _released `2023-06-14`_
 
 _released `2023-06-09`_
 
-- remove dependency on 3.11 by adding `typing-extensions` ([#3](https://github.com/xavdid/reddit-user-to-sqlite/pull/3))
+- remove dependency on 3.11 by adding `typing-extensions` ([#3](https://github.com/xavdid/reddit-user-to-sqlite/pull/3) by [@changlinli](https://github.com/changlinli))
 
 ## 0.3.0
 
