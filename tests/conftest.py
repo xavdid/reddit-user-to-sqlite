@@ -6,7 +6,11 @@ import responses
 from responses import BaseResponse, RequestsMock, matchers
 from sqlite_utils import Database
 
-from reddit_user_to_sqlite.reddit_api import USER_AGENT, Post, SuccessResponse
+from reddit_user_to_sqlite.reddit_api import (
+    USER_AGENT,
+    PagedResponse,
+    Post,
+)
 from reddit_user_to_sqlite.sqlite_helpers import CommentRow, PostRow, UserRow
 
 
@@ -26,7 +30,7 @@ def tmp_db(tmp_db_path):
     return Database(tmp_db_path)
 
 
-def _wrap_response(*children) -> SuccessResponse:
+def _wrap_response(*children) -> PagedResponse:
     return {
         "kind": "Listing",
         "data": {
@@ -274,7 +278,7 @@ def stored_removed_comment_placeholder_user() -> CommentRow:
 
 
 @pytest.fixture
-def comment_response(comment) -> SuccessResponse:
+def comment_response(comment) -> PagedResponse:
     """
     The full response from Reddit with a comment child
     """

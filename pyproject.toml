@@ -47,8 +47,5 @@ build-backend = "flit_core.buildapi"
 [tool.pyright]
 
 [tool.ruff]
-select = [
-  # isort
-  "I001",
-]
+select = ["E", "F", "I001"] # defaults & isort
 ignore = ["E501"]
