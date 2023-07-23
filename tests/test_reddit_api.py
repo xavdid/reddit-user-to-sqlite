@@ -23,6 +23,27 @@ def test_load_comments(mock_paged_request: MockPagedFunc, comment_response, comm
     assert response.call_count == 1
 
 
+@patch("reddit_user_to_sqlite.reddit_api.PAGE_SIZE", new=1)
+def test_load_comments_rate_limited(
+    mock_paged_request: MockPagedFunc, comment_response, comment, rate_limit_headers
+):
+    good_response = mock_paged_request(
+        resource="comments", params={"limit": 1}, json=comment_response
+    )
+    bad_response = mock_paged_request(
+        resource="comments",
+        params={"limit": 1},
+        json={"error": 429},
+        headers=rate_limit_headers,
+    )
+
+    # despite getting an error, we still got the first comment
+    assert load_comments_for_user("xavdid") == [comment]
+
+    assert good_response.call_count == 1
+    assert bad_response.call_count == 1
+
+
 def test_load_posts(mock_paged_request: MockPagedFunc, self_post_response, self_post):
     response = mock_paged_request(resource="submitted", json=self_post_response)
 
@@ -97,6 +118,18 @@ def test_load_info_pages(mock_info_request: MockInfoFunc, comment_response, comm
     assert load_info(["a", "b", "c", "d", "e"]) == [comment] * 3
 
 
+@patch("reddit_user_to_sqlite.reddit_api.PAGE_SIZE", new=2)
+def test_load_info_pages_with_rate_limit(
+    mock_info_request: MockInfoFunc, comment_response, comment, rate_limit_headers
+):
+    mock_info_request("a,b", json=comment_response, limit=2)
+    mock_info_request("c,d", json=comment_response, limit=2)
+    mock_info_request("e", json={"error": 429}, limit=2, headers=rate_limit_headers)
+
+    # call for e fails, but we still got the first ones
+    assert load_info(["a", "b", "c", "d", "e"]) == [comment] * 2
+
+
 def test_load_info_empty(mock_info_request: MockInfoFunc, empty_response):
     mock_info_request("a,b,c,d,e,f,g,h", json=empty_response)
 
@@ -116,16 +149,12 @@ def test_unwrap_and_raise_raises_unknown_errors():
     assert str(err.value) == "Received API error from Reddit (code 123): cool"
 
 
-def test_unwrap_and_raise_raises_rate_limit_errors():
+def test_unwrap_and_raise_raises_rate_limit_errors(rate_limit_headers):
     with pytest.raises(RedditRateLimitException) as err:
         _unwrap_response_and_raise(
             MagicMock(
                 json=lambda: {"error": 429, "message": "cool"},
-                headers={
-                    "x-ratelimit-used": "4",
-                    "x-ratelimit-remaining": "6",
-                    "x-ratelimit-reset": "20",
-                },
+                headers=rate_limit_headers,
             )
         )
 

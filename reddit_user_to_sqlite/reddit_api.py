@@ -23,11 +23,6 @@ if TYPE_CHECKING:
 
 USER_AGENT = "reddit-user-to-sqlite"
 
-# per https://www.reddit.com/r/redditdev/comments/14nbw6g/updated_rate_limits_going_into_effect_over_the/
-# free api limited at 10 queries per minute, or 6 seconds between requests
-API_DELAY = 6
-MAX_RETRIES = 8
-
 
 class SubredditFragment(TypedDict):
     ## SUBREDDIT

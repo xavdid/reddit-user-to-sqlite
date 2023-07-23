@@ -8,6 +8,7 @@ from sqlite_utils import Database
 
 from reddit_user_to_sqlite.reddit_api import (
     USER_AGENT,
+    ErrorHeaders,
     PagedResponse,
     Post,
 )
@@ -656,6 +657,7 @@ class MockPagedFunc(Protocol):
         resource: Literal["comments", "submitted"],
         json: Any,
         params: Optional[dict[str, Union[str, int]]] = None,
+        headers: Optional[dict[str, str]] = None,
     ) -> BaseResponse:
         ...
 
@@ -670,6 +672,7 @@ def mock_paged_request(mock: RequestsMock) -> MockPagedFunc:
         resource: Literal["comments", "submitted"],
         json: Any,
         params: Optional[dict[str, Union[str, int]]] = None,
+        headers: Optional[dict[str, str]] = None,
     ):
         params = {"limit": 100, "raw_json": 1, **(params or {})}
 
@@ -680,13 +683,16 @@ def mock_paged_request(mock: RequestsMock) -> MockPagedFunc:
                 matchers.header_matcher({"user-agent": USER_AGENT}),
             ],
             json=json,
+            headers=headers,
         )
 
     return _mock_request
 
 
 class MockInfoFunc(Protocol):
-    def __call__(self, ids: str, json: Any, limit=100) -> BaseResponse:
+    def __call__(
+        self, ids: str, json: Any, headers: Optional[dict[str, str]] = None, limit=100
+    ) -> BaseResponse:
         ...
 
 
@@ -703,6 +709,7 @@ def mock_info_request(mock: RequestsMock) -> MockInfoFunc:
     def _mock_request(
         ids: str,
         json: Any,
+        headers: Optional[dict[str, str]] = None,
         limit=100,
     ):
         params = {"limit": limit, "raw_json": 1, "id": ids}
@@ -714,6 +721,7 @@ def mock_info_request(mock: RequestsMock) -> MockInfoFunc:
                 matchers.header_matcher({"user-agent": USER_AGENT}),
             ],
             json=json,
+            headers=headers,
         )
 
     return _mock_request
@@ -811,6 +819,15 @@ def user_response():
             "accept_followers": True,
             "has_subscribed": False,
         },
+    }
+
+
+@pytest.fixture
+def rate_limit_headers() -> ErrorHeaders:
+    return {
+        "x-ratelimit-used": "4",
+        "x-ratelimit-remaining": "6",
+        "x-ratelimit-reset": "20",
     }
 
 
