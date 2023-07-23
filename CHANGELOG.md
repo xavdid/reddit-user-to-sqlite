@@ -4,9 +4,9 @@ This project uses [SemVer](https://semver.org/) for versioning. Its public APIs,
 
 ## 0.4.2
 
-_released `2023-07-23`_
+_released `2023-07-22`_
 
-- handle [new rate limiting](https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki) more gracefully (fixes [#23](https://github.com/xavdid/reddit-user-to-sqlite/issues/23) via [#24](https://github.com/xavdid/reddit-user-to-sqlite/pull/24) (by [@piyh](https://github.com/piyh)) and TBD);
+- handle [new rate limiting](https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki) more gracefully (fixes [#23](https://github.com/xavdid/reddit-user-to-sqlite/issues/23) via [#24](https://github.com/xavdid/reddit-user-to-sqlite/pull/24) (by [@piyh](https://github.com/piyh)) and [#25](https://github.com/xavdid/reddit-user-to-sqlite/pull/25))
 
 ## 0.4.1
 
