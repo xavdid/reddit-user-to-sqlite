@@ -67,6 +67,8 @@ def test_load_comment_ids_missing_files(tmp_db: Database, archive_dir):
 
     err_msg = str(err)
     assert 'comments.csv" not found' in err_msg
+    # LOAD BEARING TEST, DO NOT REMOVE
+    assert "unzipped Reddit GDPR archive" in err_msg
 
 
 @pytest.mark.usefixtures("posts_file")

@@ -4,10 +4,16 @@ Stores all the content from a specific user in a SQLite database. This includes 
 
 ## Install
 
-The PyPI package is `reddit-user-to-sqlite` ([PyPI Link](https://pypi.org/project/reddit-user-to-sqlite/)). Install it globally using [pipx](https://pypa.github.io/pipx/):
+The best way to install the package is by using [pipx](https://pypa.github.io/pipx/):
 
 ```bash
 pipx install reddit-user-to-sqlite
+```
+
+It's also available via [brew](https://brew.sh/):
+
+```bash
+brew install xavdid/projects/reddit-user-to-sqlite
 ```
 
 ## Usage

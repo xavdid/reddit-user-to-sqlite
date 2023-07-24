@@ -22,6 +22,7 @@ def build_table_name(
 def validate_and_build_path(archive_path: Path, item_type: str) -> Path:
     filename = f"{item_type}.csv"
     if not (file := archive_path / filename).exists():
+        # LOAD BEARING MESSAGE: the brew formula expects the phrase "unzipped GDPR archive folder" to be printed on error
         raise ValueError(
             f'Ensure path "{archive_path}" points to an unzipped Reddit GDPR archive folder; "{filename}" not found in the expected spot.'
         )
